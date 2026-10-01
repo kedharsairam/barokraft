@@ -38,10 +38,41 @@ class EdgeContractTest {
 
     private val endpoint = "https://api.open-meteo.com/v1/forecast"
 
+    /**
+     * Fetch, or null when the answer tells us nothing.
+     *
+     * ## Why null rather than an exception
+     *
+     * Because a timeout is a fact about the network, not about the
+     * contract. These tests exist to check that the API's arrays stay
+     * parallel and that `unixtime` stays epoch seconds; a socket timeout
+     * answers none of that, and failing on it means the build reports a
+     * broken contract when the contract was never tested.
+     *
+     * The pre-flight `reachable()` check already swallowed exceptions, which
+     * made this worse rather than better: it confirmed the host was up, the
+     * test then fetched again, and the second fetch timed out and failed the
+     * run. Two requests where one would do, with only the first guarded.
+     *
+     * So every fetch is guarded, once, at the point of use.
+     */
+    private fun fetch(url: String): Pair<Int, String>? = try {
+        get(url)
+    } catch (e: java.io.IOException) {
+        // Includes SocketTimeoutException. Logged rather than thrown: the
+        // run stays green, and the message is in the log for anyone who
+        // wondered why the suite was quiet.
+        println("SKIP|${e::class.simpleName}: ${e.message}")
+        null
+    }
+
     private fun get(url: String): Pair<Int, String> {
         val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 15_000
+        connection.connectTimeout = 15_000
+        // 45 s, not 15. This request asks for ten variables over a day and
+        // can be slow from a shared runner; the earlier value fired on a
+        // response that was merely late.
+        connection.readTimeout = 45_000
         connection.setRequestProperty("Accept", "application/json")
         connection.setRequestProperty("Accept-Encoding", "gzip")
         return try {
@@ -59,18 +90,15 @@ class EdgeContractTest {
         }
     }
 
-    private fun reachable(): Boolean = try {
-        val (status, _) = get("$endpoint?latitude=0&longitude=0&current=temperature_2m")
-        status in 200..299
-    } catch (e: Exception) {
-        false
-    }
+    private fun reachable(): Boolean =
+        fetch("$endpoint?latitude=0&longitude=0&current=temperature_2m")
+            ?.first?.let { it in 200..299 } == true
 
     @Test
     fun `the live endpoint answers with a parseable forecast`() {
         if (!reachable()) return
         val url = Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1)
-        val (status, body) = get(url)
+        val (status, body) = fetch(url) ?: return
         assertEquals("the endpoint must answer 200", 200, status)
         val forecast = OpenMeteo.parseForecast(body)
         assertTrue("a day of hourly data is 24 hours", forecast.hours.size >= 24)
@@ -82,7 +110,7 @@ class EdgeContractTest {
         // variable array, a naive reader would borrow another hour's value
         // and nothing would look wrong.
         if (!reachable()) return
-        val (_, body) = get(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1))
+        val (_, body) = fetch(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1)) ?: return
         val hourly = parseJson(body).asObject()["hourly"].asObject()
         val times = hourly["time"].asArray().size
         assertTrue("time array was empty", times > 0)
@@ -100,7 +128,7 @@ class EdgeContractTest {
         // The app does no timezone arithmetic of its own, so this is the
         // contract that keeps every hour label correct.
         if (!reachable()) return
-        val (_, body) = get(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1))
+        val (_, body) = fetch(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1)) ?: return
         val first = parseJson(body).asObject()["hourly"].asObject()["time"].asArray()
             .first().asFloatOrNull()!!.toLong()
         val asDate = java.time.Instant.ofEpochSecond(first)
@@ -114,7 +142,7 @@ class EdgeContractTest {
     @Test
     fun `sea level pressure is present, because the drift audit needs it`() {
         if (!reachable()) return
-        val (_, body) = get(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1))
+        val (_, body) = fetch(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1)) ?: return
         val forecast = OpenMeteo.parseForecast(body)
         val withPressure = forecast.hours.count { it.seaLevelPressureHpa != null }
         assertTrue(
@@ -132,7 +160,7 @@ class EdgeContractTest {
         if (!reachable()) return
         val url = Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1) +
             "&hourly=not_a_real_variable"
-        val (status, body) = get(url)
+        val (status, body) = fetch(url) ?: return
         assertTrue("an unknown variable should be an error, got $status", status >= 400)
         assertTrue(
             "an error should be json with a reason",
@@ -146,7 +174,7 @@ class EdgeContractTest {
         // forecast is how an app ends up showing a blank screen with no
         // explanation.
         if (!reachable()) return
-        val (status, body) = get("$endpoint?latitude=999&longitude=999&hourly=temperature_2m")
+        val (status, body) = fetch("$endpoint?latitude=999&longitude=999&hourly=temperature_2m") ?: return
         if (status in 200..299) return
         val looksHtml = body.trimStart().startsWith("<")
         assertTrue(
