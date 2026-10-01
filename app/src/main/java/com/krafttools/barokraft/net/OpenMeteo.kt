@@ -210,7 +210,7 @@ object OpenMeteo {
         val longitude: Double,
         val elevationMetres: Double?,
     ) {
-        /** "Palakollu, Andhra Pradesh" — disambiguated, not over-qualified. */
+        /** "Quito, Pichincha" — disambiguated, not over-qualified. */
         val displayName: String
             get() = listOfNotNull(
                 name,

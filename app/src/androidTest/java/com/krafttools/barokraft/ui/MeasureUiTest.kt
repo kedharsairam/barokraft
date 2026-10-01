@@ -55,8 +55,8 @@ class MeasureUiTest {
     }
 
     private val forecast = Protocol.Forecast(
-        latitude = 9.2263,
-        longitude = 76.8074,
+        latitude = -0.1807,
+        longitude = -78.4678,
         elevationMetres = 12.0,
         utcOffsetSeconds = 0,
         hours = (0 until 24).map { i ->

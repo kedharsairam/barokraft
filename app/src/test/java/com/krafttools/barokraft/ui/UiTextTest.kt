@@ -7,8 +7,10 @@ import com.krafttools.barokraft.core.fmt1
 import com.krafttools.barokraft.core.nowcast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * The sentences the barometer panel prints.
@@ -119,5 +121,54 @@ class UiTextTest {
             "caption should mention the ${p.size} runs",
             nowcastCaption(p, HORIZON_HOURS).contains(p.size.toString()),
         )
+    }
+
+    @Test
+    fun `no user-facing string names a specific place`() {
+        // A named example in a placeholder reads as a default the app chose
+        // for you. The city field used to name a real town, which is both a
+        // location this app does not have and someone's home address in a
+        // public repository. The name itself is not repeated here.
+        //
+        // The file is found by walking up from the test's working directory,
+        // because that directory is `app/` and a path relative to the
+        // repository root does not exist from there. The first version of
+        // this test used exactly that path, returned early when the file was
+        // missing, and therefore passed with the name put back — a check
+        // that cannot fail, in a commit whose whole subject is checks that
+        // cannot fail.
+        val marker = File("src/main/java/com/krafttools/barokraft/MainActivity.kt")
+        val file = generateSequence(marker.absoluteFile) { it.parentFile }
+            .map { File(it, "src/main/java/com/krafttools/barokraft/MainActivity.kt") }
+            .firstOrNull { it.exists() }
+        assertNotNull(
+            "could not locate MainActivity.kt from ${marker.absoluteFile}",
+            file,
+        )
+        val source = file!!.readText()
+        val placeholders = Regex("placeholder = \\{ Text\\(\"([^\"]+)\"")
+            .findAll(source)
+            .map { it.groupValues[1] }
+            .toList()
+        assertTrue(
+            "the city field's placeholder was not found — this test is not looking at anything",
+            placeholders.isNotEmpty(),
+        )
+        for (text in placeholders) {
+            // The rule is shape, not vocabulary. A place hint is a single
+            // word; a hint that is actually an instruction is several.
+            // Checking for capitals instead rejected the sentence-case hint
+            // this now uses, which is the sort of over-eager assertion that
+            // gets deleted rather than fixed.
+            assertTrue(
+                "the search field looks like a place name: \"$text\"",
+                text.trim().split(" ", "\\n").size >= 2,
+            )
+            assertFalse(
+                "the search field names a place and region: \"$text\"",
+                text.contains(','),
+            )
+            assertTrue("placeholder is too long to be a hint: \"$text\"", text.length <= 28)
+        }
     }
 }

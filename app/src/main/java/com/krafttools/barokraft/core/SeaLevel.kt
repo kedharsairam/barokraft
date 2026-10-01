@@ -11,7 +11,7 @@ import kotlin.math.pow
  * ## The problem this file exists to solve
  *
  * A phone's pressure sensor reports *station* pressure — the pressure at
- * the phone, which in Palakollu at roughly sea level is close to sea
+ * the phone, which anywhere near sea level is close to sea
  * level and at 3,000 m in the Himalaya is about 700 hPa. To say anything
  * about altitude you have to reduce that to a sea-level reference, and
  * every app that skips the reduction is quietly reporting nonsense.

@@ -75,7 +75,7 @@ anything and the app says so rather than drawing a confident line.
 <details>
 <summary><b>Tests</b></summary>
 
-**244 unit tests and 40 instrumented tests, all passing.** Six of the unit
+**245 unit tests and 40 instrumented tests, all passing.** Six of the unit
 tests hit the live Open-Meteo endpoint, because every other test parses a
 fixture and a fixture cannot tell you the contract changed. They skip
 without a route, so a build offline is a green build.
@@ -90,7 +90,7 @@ without a route, so a build offline is a green build.
 | `JsonTest` | 20 |
 | `AboutTest` | 19 |
 | `SkyTest` | 23 |
-| `UiTextTest` | 10 |
+| `UiTextTest` | 11 |
 | `BaroTest` | 17 |
 | `PolicyTest` | 15 |
 | `SeaLevelTest` | 14 |

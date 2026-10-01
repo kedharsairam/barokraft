@@ -440,7 +440,7 @@ class MeasureViewModelTest {
 
     @Test
     fun `typing does not fire a request per keystroke`() {
-        // Found on the device: typing "Palakkad" cost eight calls against a
+        // Found on the device: typing "Bergen" cost eight calls against a
         // 10,000-a-day free tier. This asserts the debounce coalesces
         // rather than asserting the timing directly, so it cannot become
         // flaky on a slow machine.
@@ -459,15 +459,15 @@ class MeasureViewModelTest {
         )
         // A fast typist: every character in the same instant, the worst case
         // for a debounce.
-        "Palakkad".forEachIndexed { i, _ ->
-            model.onSearchQueryChange("Palakkad".take(i + 1))
+        "Bergen".forEachIndexed { i, _ ->
+            model.onSearchQueryChange("Bergen".take(i + 1))
         }
         idle(400) // past the real 350 ms
         counting.awaitCalls(1)
         idle()
         assertEquals(
             "eight keystrokes must cost one call, not eight; saw ${counting.calls}",
-            listOf("Palakkad"),
+            listOf("Bergen"),
             counting.calls.toList(),
         )
     }
@@ -477,7 +477,7 @@ class MeasureViewModelTest {
         // The defect: requests for `p`, `pa`, `pal`… were all in flight and
         // whichever landed last won, so results for `Pa` — Ivory Coast,
         // Kaduna, Burkina Faso — appeared under a field reading
-        // `Palakkad`. Found by typing into a real picker on the device.
+        // `Bergen`. Found by typing into a real picker on the device.
         //
         // Written with latches rather than sleeps. A `Thread.sleep` here
         // made the test pass or fail depending on machine load, and a flaky
@@ -485,7 +485,7 @@ class MeasureViewModelTest {
         val client = ScriptedClient(
             answers = mapOf(
                 "Pa" to listOf(place("Pa", "Ivory Coast")),
-                "Palakkad" to listOf(place("Palakkad", "Kerala")),
+                "Bergen" to listOf(place("Bergen", "Vestland")),
             ),
             blockFor = "Pa",
         )
@@ -508,12 +508,12 @@ class MeasureViewModelTest {
         // and only then posted to the main dispatcher, so idling the looper
         // can complete before the post arrives. `awaitResults` waits for the
         // condition instead, which cannot be early or late.
-        model.onSearchQueryChange("Palakkad")
+        model.onSearchQueryChange("Bergen")
         client.awaitCalls(2)
         awaitResults(model) { it.isNotEmpty() }
         assertEquals(
             "the newer answer must be shown",
-            listOf("Palakkad"),
+            listOf("Bergen"),
             model.state.searchResults.map { it.name },
         )
 
@@ -526,7 +526,7 @@ class MeasureViewModelTest {
         awaitResults(model) { it.isNotEmpty() }
         assertEquals(
             "a late answer for an old query must not overwrite a newer one",
-            listOf("Palakkad"),
+            listOf("Bergen"),
             model.state.searchResults.map { it.name },
         )
     }
@@ -534,7 +534,7 @@ class MeasureViewModelTest {
     @Test
     fun `a cleared query empties the results immediately`() {
         val model = vm()
-        model.onSearchQueryChange("Palakkad")
+        model.onSearchQueryChange("Bergen")
         idle()
         model.onSearchQueryChange("")
         assertEquals(emptyList<OpenMeteo.Place>(), model.state.searchResults)

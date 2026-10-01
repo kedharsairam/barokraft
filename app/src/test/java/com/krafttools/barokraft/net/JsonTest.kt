@@ -104,8 +104,10 @@ class JsonTest {
 
     @Test
     fun `parses a unicode escape`() {
-        val v = parseJson("""{"s":"Palakollu \u00e9"}""").asObject()
-        assertEquals("Palakollu é", v["s"].asStringOrNull())
+        // "Zürich" — a real place whose name needs the escape, so the test
+        // reads as what it checks rather than as an arbitrary string.
+        val v = parseJson("""{"s":"Z\u00fcrich"}""").asObject()
+        assertEquals("Zürich", v["s"].asStringOrNull())
     }
 
     @Test

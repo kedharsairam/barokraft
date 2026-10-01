@@ -194,7 +194,7 @@ object Protocol {
      * be cached against the request that produced it.
      */
     internal fun trimCoord(v: Double): String {
-        // Locale.US is not optional. A default-locale format renders 9.2263
+        // Locale.US is not optional. A default-locale format renders -0.1807
         // as "9,2263" in much of the world, which silently corrupts every
         // coordinate on a phone set to a comma-decimal language and
         // produces a forecast for the wrong hemisphere.

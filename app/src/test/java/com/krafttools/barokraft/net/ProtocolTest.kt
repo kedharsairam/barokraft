@@ -20,7 +20,7 @@ class ProtocolTest {
 
     @Test
     fun `the url asks only for what the app renders`() {
-        val url = Protocol.buildUrl(9.2263, 76.8074)
+        val url = Protocol.buildUrl(-0.1807, -78.4678)
         assertTrue(url.startsWith("https://api.open-meteo.com/v1/forecast"))
         for (variable in listOf(
             "temperature_2m", "apparent_temperature", "precipitation",
@@ -35,7 +35,7 @@ class ProtocolTest {
     fun `the url requests utc so the device never guesses its own offset`() {
         // A phone that guesses its timezone wrong shows tomorrow's weather
         // under today's date, which is worse than no forecast.
-        val url = Protocol.buildUrl(9.2263, 76.8074)
+        val url = Protocol.buildUrl(-0.1807, -78.4678)
         assertTrue(url.contains("timezone=UTC"))
         assertTrue(url.contains("timeformat=unixtime"))
     }
@@ -44,7 +44,7 @@ class ProtocolTest {
     fun `the same place produces a byte identical url`() {
         // Determinism is what lets a response be cached against the
         // request that produced it.
-        assertEquals(Protocol.buildUrl(9.2263, 76.8074), Protocol.buildUrl(9.2263, 76.8074))
+        assertEquals(Protocol.buildUrl(-0.1807, -78.4678), Protocol.buildUrl(-0.1807, -78.4678))
     }
 
     @Test
@@ -57,9 +57,9 @@ class ProtocolTest {
     fun `coordinates are trimmed without losing precision that matters`() {
         // Four decimals is about 11 m, which is far finer than a weather
         // grid cell and keeps the url readable in a log.
-        val url = Protocol.buildUrl(9.22631487, 76.80743822)
-        assertTrue(url.contains("latitude=9.2263"))
-        assertTrue(url.contains("longitude=76.8074"))
+        val url = Protocol.buildUrl(-0.18071487, -78.46782264)
+        assertTrue(url.contains("latitude=-0.1807"))
+        assertTrue(url.contains("longitude=-78.4678"))
     }
 
     @Test
@@ -71,8 +71,8 @@ class ProtocolTest {
 
     @Test
     fun `geocoding slugs a query into a url`() {
-        val url = Protocol.buildGeocodingUrl("Palakollu")
-        assertTrue(url.contains("name=palakollu"))
+        val url = Protocol.buildGeocodingUrl("Quito")
+        assertTrue(url.contains("name=quito"))
         assertTrue(url.contains("count=10"))
     }
 
@@ -86,7 +86,7 @@ class ProtocolTest {
 
     private val body = """
     {
-      "latitude": 9.2263, "longitude": 76.8074, "elevation": 12.0,
+      "latitude": -0.1807, "longitude": -78.4678, "elevation": 12.0,
       "utc_offset_seconds": 0, "timezone": "GMT",
       "hourly": {
         "time": [1759257600, 1759261200, 1759264800],
@@ -217,15 +217,15 @@ class ProtocolTest {
     fun `parses places`() {
         val json = """
         {"results":[
-          {"name":"Palakollu","latitude":9.2263,"longitude":76.8074,
-           "country":"India","admin1":"Andhra Pradesh","elevation":14.0},
-          {"name":"Palakkad","latitude":10.7867,"longitude":76.6548,
-           "country":"India","admin1":"Kerala"}
+          {"name":"Quito","latitude":-0.1807,"longitude":-78.4678,
+           "country":"India","admin1":"Pichincha","elevation":14.0},
+          {"name":"Bergen","latitude":10.7867,"longitude":76.6548,
+           "country":"India","admin1":"Vestland"}
         ]}
         """.trimIndent()
         val places = OpenMeteo.parsePlaces(json)
         assertEquals(2, places.size)
-        assertEquals("Palakollu, Andhra Pradesh, India", places[0].displayName)
+        assertEquals("Quito, Pichincha, India", places[0].displayName)
         assertEquals(14.0, places[0].elevationMetres!!, 0.01)
     }
 

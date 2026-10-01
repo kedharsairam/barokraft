@@ -106,7 +106,7 @@ class MeasureViewModel(
          *
          * 350 ms is long enough that a normal typing speed coalesces into
          * one request, and short enough that the list still feels live.
-         * Typing "Palakkad" now costs one call rather than eight.
+         * Typing an eight-letter city name now costs one call rather than eight.
          */
         const val SEARCH_DEBOUNCE_MS = 350L
 
@@ -291,7 +291,7 @@ class MeasureViewModel(
             searchEmpty = false,
         )
         // A new city invalidates the cached forecast outright rather than
-        // showing Palakollu's weather over a header that says London.
+        // showing one city's weather under a header that names another.
         cachedForecast = null
         lastFetchedMillis = null
         refresh(force = true)
@@ -301,11 +301,11 @@ class MeasureViewModel(
      * Handle a change to the city query.
      *
      * Every keystroke restarts a debounce timer rather than starting a
-     * request. Found on the device, not by reading: typing "Palakkad" fired
+     * request. Found on the device, not by reading: typing eight characters fired
      * **eight** requests — one per character — against a free tier that
      * allows 10,000 a day, and the eight responses raced each other so that
      * results for `Pa` (Ivory Coast, Kaduna, Burkina Faso) were displayed
-     * under a field reading `Palakkad`.
+     * under a field reading something else entirely.
      *
      * Both halves of that matter and neither is fixed by the other. The
      * debounce reduces the request count; the generation check below is

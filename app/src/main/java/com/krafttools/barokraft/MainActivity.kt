@@ -155,7 +155,10 @@ private fun PlacePicker(
             TextField(
                 value = query,
                 onValueChange = onQueryChange,
-                placeholder = { Text("Palakollu", style = label, color = TextMuted) },
+                // A neutral prompt, not an example place. A named example in a
+                // placeholder reads as a default the app has chosen for you, and this
+                // app holds no location of any kind until the user picks one.
+                placeholder = { Text("Type a city name", style = label, color = TextMuted) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 colors = TextFieldDefaults.colors(

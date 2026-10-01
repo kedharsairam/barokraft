@@ -13,7 +13,7 @@ import java.util.zip.GZIPInputStream
  *
  * ## What this can and cannot test
  *
- * A *weather figure* cannot be asserted. Nobody knows what Palakollu's
+ * A *weather figure* cannot be asserted. Nobody knows what Quito's
  * temperature will be on any given day, and a test that asserted a number
  * would fail for reasons that have nothing to do with this app.
  *
@@ -69,7 +69,7 @@ class EdgeContractTest {
     @Test
     fun `the live endpoint answers with a parseable forecast`() {
         if (!reachable()) return
-        val url = Protocol.buildUrl(9.2263, 76.8074, forecastDays = 1)
+        val url = Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1)
         val (status, body) = get(url)
         assertEquals("the endpoint must answer 200", 200, status)
         val forecast = OpenMeteo.parseForecast(body)
@@ -82,7 +82,7 @@ class EdgeContractTest {
         // variable array, a naive reader would borrow another hour's value
         // and nothing would look wrong.
         if (!reachable()) return
-        val (_, body) = get(Protocol.buildUrl(9.2263, 76.8074, forecastDays = 1))
+        val (_, body) = get(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1))
         val hourly = parseJson(body).asObject()["hourly"].asObject()
         val times = hourly["time"].asArray().size
         assertTrue("time array was empty", times > 0)
@@ -100,7 +100,7 @@ class EdgeContractTest {
         // The app does no timezone arithmetic of its own, so this is the
         // contract that keeps every hour label correct.
         if (!reachable()) return
-        val (_, body) = get(Protocol.buildUrl(9.2263, 76.8074, forecastDays = 1))
+        val (_, body) = get(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1))
         val first = parseJson(body).asObject()["hourly"].asObject()["time"].asArray()
             .first().asFloatOrNull()!!.toLong()
         val asDate = java.time.Instant.ofEpochSecond(first)
@@ -114,7 +114,7 @@ class EdgeContractTest {
     @Test
     fun `sea level pressure is present, because the drift audit needs it`() {
         if (!reachable()) return
-        val (_, body) = get(Protocol.buildUrl(9.2263, 76.8074, forecastDays = 1))
+        val (_, body) = get(Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1))
         val forecast = OpenMeteo.parseForecast(body)
         val withPressure = forecast.hours.count { it.seaLevelPressureHpa != null }
         assertTrue(
@@ -130,7 +130,7 @@ class EdgeContractTest {
         // unrequested fields, every "no rain expected" label would become
         // a false statement.
         if (!reachable()) return
-        val url = Protocol.buildUrl(9.2263, 76.8074, forecastDays = 1) +
+        val url = Protocol.buildUrl(-0.1807, -78.4678, forecastDays = 1) +
             "&hourly=not_a_real_variable"
         val (status, body) = get(url)
         assertTrue("an unknown variable should be an error, got $status", status >= 400)
