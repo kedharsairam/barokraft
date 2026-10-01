@@ -44,7 +44,16 @@ class VerdictTest {
     fun `with neither source the app says what is missing`() {
         val v = verdict(VerdictInput(SourceState.NEITHER, now))
         assertEquals(VerdictTone.BLOCKED, v.tone)
-        assertTrue(v.headline.contains("barometer"))
+        // The header line states the cause; the headline must not repeat
+        // it, or the same sentence is on screen twice.
+        assertEquals("Nothing to read", v.headline)
+        assertTrue(
+            "the cause belongs in the detail",
+            // "pressure sensor", not "barometer": the detail names the
+            // hardware in the words a user would use for it, and the
+            // header already carries the other phrasing.
+            v.detail!!.contains("pressure sensor"),
+        )
         assertTrue(v.detail!!.contains("nothing it can honestly tell you"))
     }
 

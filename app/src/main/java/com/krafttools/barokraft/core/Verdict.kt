@@ -87,7 +87,11 @@ fun verdict(input: VerdictInput): Verdict = when (input.state) {
     // 1. Nothing to work with.
     SourceState.NEITHER -> Verdict(
         tone = VerdictTone.BLOCKED,
-        headline = "No barometer, no connection",
+        // Deliberately not "No barometer, no connection" — the header
+        // already says exactly that, and an instrumented test caught the
+        // same sentence rendered twice on one screen. The headline states
+        // what the user is looking at; the detail states the cause.
+        headline = "Nothing to read",
         detail = "This app reads the pressure sensor and fetches a forecast. " +
             "Neither is available, so there is nothing it can honestly tell you.",
     )
