@@ -56,10 +56,6 @@ import com.krafttools.barokraft.net.Failure
  * handset and squinting.
  */
 
-/** Spacing scale. 8dp rhythm, because the rest of this family uses it. */
-private val Gap = 8.dp
-private val Pad = 20.dp
-
 @Composable
 fun MeasureContent(
     state: MeasureState,
@@ -68,6 +64,9 @@ fun MeasureContent(
     onOpenPlacePicker: () -> Unit = {},
     onOpenMethod: () -> Unit = {},
     onDismissMethod: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
+    onDismissAbout: () -> Unit = {},
+    versionName: String = "0.1.0",
 ) {
     Box(
         Modifier
@@ -121,11 +120,15 @@ fun MeasureContent(
 
             FailureNotice(state.failure, state)
 
-            Controls(state, onToggleSampling, onOpenMethod)
+            Controls(state, onToggleSampling, onOpenMethod, onOpenAbout)
         }
 
         if (state.showingMethod) {
             MethodSheet(onDismissMethod)
+        }
+
+        if (state.showingAbout) {
+            AboutSheet(versionName = versionName, onDismiss = onDismissAbout)
         }
     }
 }
@@ -487,6 +490,7 @@ private fun Controls(
     state: MeasureState,
     onToggleSampling: () -> Unit,
     onOpenMethod: () -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth(),
@@ -531,6 +535,24 @@ private fun Controls(
                     },
                 )
                 .clickableNoRipple(onOpenMethod),
+        )
+        Text(
+            "About",
+            style = label.copy(fontSize = 14.sp),
+            color = TextSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Surface1)
+                .padding(vertical = 14.dp)
+                .then(
+                    Modifier.semantics {
+                        contentDescription =
+                            "About this app, its sources, and what it will not claim"
+                    },
+                )
+                .clickableNoRipple(onOpenAbout),
         )
     }
 }

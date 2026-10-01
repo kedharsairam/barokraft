@@ -74,6 +74,9 @@ class MainActivity : ComponentActivity() {
                     onOpenPlacePicker = viewModel::openPlacePicker,
                     onOpenMethod = viewModel::openMethod,
                     onDismissMethod = viewModel::dismissMethod,
+                    onOpenAbout = viewModel::openAbout,
+                    onDismissAbout = viewModel::dismissAbout,
+                    versionName = BuildConfig.VERSION_NAME,
                 )
                 if (state.pickingPlace) {
                     PlacePicker(

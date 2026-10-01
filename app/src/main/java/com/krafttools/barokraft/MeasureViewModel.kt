@@ -196,6 +196,14 @@ class MeasureViewModel(
         state = state.copy(showingMethod = false)
     }
 
+    fun openAbout() {
+        state = state.copy(showingAbout = true)
+    }
+
+    fun dismissAbout() {
+        state = state.copy(showingAbout = false)
+    }
+
     fun choosePlace(place: OpenMeteo.Place) {
         store.savePlace(place)
         state = state.copy(

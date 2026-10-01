@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
@@ -28,6 +29,17 @@ import androidx.compose.ui.unit.sp
  * "1013.2 hPa" on one line at arbitrary scale. The detail below the
  * figure carries everything the cap pushed out.
  */
+/**
+ * The spacing scale.
+ *
+ * An 8dp rhythm with a 20dp page margin, shared rather than redeclared per
+ * screen. Two screens each with their own `Gap` is how a bottom sheet ends
+ * up 4dp tighter than the page behind it, which is the kind of thing only
+ * a screenshot comparison ever notices.
+ */
+internal val Gap = 8.dp
+internal val Pad = 20.dp
+
 internal val label = TextStyle(
     fontFamily = FontFamily.SansSerif,
     fontWeight = FontWeight.Normal,

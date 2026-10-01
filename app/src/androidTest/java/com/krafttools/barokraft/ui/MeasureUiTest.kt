@@ -83,6 +83,7 @@ class MeasureUiTest {
                 MeasureContent(
                     state = holder.value,
                     nowMillis = now,
+                    versionName = "0.1.0",
                 )
             }
         }
@@ -333,6 +334,76 @@ class MeasureUiTest {
         )
         compose.onNodeWithText("What it will not claim").assertIsDisplayed()
         compose.onNodeWithText("What this app measures").assertIsDisplayed()
+    }
+
+    // ── The about sheet ─────────────────────────────────────────────────
+
+    @Test
+    fun the_about_sheet_carries_the_required_attribution() {
+        // CC BY 4.0 requires attribution and the user reads the app, not
+        // the repository, so it has to be on screen here.
+        show(MeasureState(sourceState = SourceState.BOTH, showingAbout = true).withVerdict())
+        compose.onAllNodesWithText(
+            "Open-Meteo, which serves a blend of national",
+            substring = true,
+        ).fetchSemanticsNodes().let { n ->
+            assertTrue("expected the attribution on screen, got ${n.size}", n.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun the_about_sheet_shows_the_version() {
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                showingAbout = true,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithText("Version 0.1.0 · MIT licence")
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("expected the version line, got ${n.size}", n.isNotEmpty())
+            }
+    }
+
+    @Test
+    fun the_about_sheet_states_the_ensemble_size_the_code_uses() {
+        show(MeasureState(sourceState = SourceState.BOTH, showingAbout = true).withVerdict())
+        compose.onAllNodesWithText(
+            "estimated ${com.krafttools.barokraft.core.ENSEMBLE_SIZE} times",
+            substring = true,
+        ).fetchSemanticsNodes().let { n ->
+            assertTrue(
+                "the sheet must quote the ensemble the code actually runs",
+                n.isNotEmpty(),
+            )
+        }
+    }
+
+    @Test
+    fun the_about_sheet_promises_no_blending() {
+        show(MeasureState(sourceState = SourceState.BOTH, showingAbout = true).withVerdict())
+        compose.onAllNodesWithText("The two sources", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("expected the two-sources section, got ${n.size}", n.isNotEmpty())
+            }
+        compose.onAllNodesWithText("never averaged", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the core promise must be on screen", n.isNotEmpty())
+            }
+    }
+
+    @Test
+    fun the_about_sheet_admits_a_phone_with_no_barometer_is_normal() {
+        show(
+            MeasureState(
+                sourceState = SourceState.NETWORK_ONLY,
+                showingAbout = true,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithText("ordinary hardware", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the sheet should say it, got ${n.size}", n.isNotEmpty())
+            }
     }
 
     // ── Accessibility ───────────────────────────────────────────────────

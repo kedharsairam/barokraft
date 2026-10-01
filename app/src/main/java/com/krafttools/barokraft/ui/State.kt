@@ -95,6 +95,9 @@ data class MeasureState(
     /** The method disclosure is open. */
     val showingMethod: Boolean = false,
 
+    /** The about sheet is open. */
+    val showingAbout: Boolean = false,
+
     /** The city search has never returned anything for this query. */
     val searchEmpty: Boolean = false,
 ) {
