@@ -41,7 +41,7 @@ fun MethodSheet(onDismiss: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Ink.copy(alpha = 0.94f))
+            .background(Ink)
             .clickableNoRipple(onDismiss),
     ) {
         Column(

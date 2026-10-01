@@ -68,7 +68,7 @@ fun AboutSheet(
     Column(
         Modifier
             .fillMaxSize()
-            .background(Ink.copy(alpha = 0.96f))
+            .background(Ink)
             .clickableNoRipple(onDismiss),
     ) {
         Column(

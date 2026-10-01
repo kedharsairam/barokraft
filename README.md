@@ -3,284 +3,161 @@
 An Android weather app that reads your phone's pressure sensor and a
 trusted network forecast, and refuses to average them.
 
-A barometer measures pressure. Pressure falls before weather arrives, and
-the size of the fall says something about what is coming. That is a real
-signal, available offline, from hardware you already own. It is also much
-narrower than what people want from a weather app, and most apps that use
-it quietly bolt a network forecast onto the same screen so the gap is not
-visible.
+Pressure falls before weather arrives, and the size of the fall says
+something about what is coming. That signal is real, available offline, and
+much narrower than what people want from a weather app — so most apps that
+use it bolt a forecast onto the same screen and hope the seam is not
+noticed.
 
 BaroKraft shows both, separately, and tells you when they disagree.
 
 ## What it does
 
-**Shows conditions, hours and days first, and the barometer second.** The
-barometer is what makes this app different; it is not what someone opens the
-app to see. It gets the most considered treatment on the screen, not the
-largest.
-
-**Reads the barometer offline.** Sampling every 10 minutes while the screen
-is open. A pressure sensor is good to about 0.012 hPa and a day's weather
-is 10–40 hPa, so a faster interval collects noise, costs battery, and
-improves nothing readable.
-
-**Forecasts over the network**, from Open-Meteo, which blends ECMWF, NOAA,
-DWD, Météo-France and the UK Met Office models and picks the highest-
-resolution one for your coordinates. No API key. No account.
-
-**Never blends the two.** They answer different questions on different
-timescales. A blend would be less accurate than either while looking as
-confident as both. When they disagree, the app says they disagree — and
-says which way.
-
-**Audits its own calibration.** A sea-level reference is a *current value
-that moves with the weather*, so a stored one goes stale and starts
-producing a plausible wrong altitude. When a forecast is available, BaroKraft
-compares the two and reports the disagreement. No offline-only app can do
-this, because it has nothing to check itself against.
-
-**Gives you an altitude if you want one.** A barometer cannot find altitude
-on its own — it needs a sea-level reference, and without one the app shows
-no altitude at all rather than a plausible wrong number. Set one from a
-known altitude (a floor, a contour, a sign) or from a QNH if you have one.
-
-**Works on a phone with no barometer.** Every budget handset and most
-tablets have no pressure sensor. Verified on a Realme RMX3998, which has
-none. That is ordinary hardware, not a broken
-phone, so the app shows the forecast and says plainly that there is no
-local reading — rather than displaying zeros or hiding the difference.
+- **Conditions, hours and days first**, the barometer second. It gets the
+  most considered treatment on the screen, not the largest.
+- **Never blends the two sources.** They answer different questions on
+  different timescales, so an average would be less accurate than either
+  while looking as confident as both.
+- **Reports its own nowcast as a band**, not a number. The band is the
+  product.
+- **Audits its own calibration** against the forecast. No offline-only app
+  can, because it has nothing to check itself against.
+- **Works on a phone with no barometer** — verified on a Realme RMX3998,
+  which has none.
 
 ## Permissions
 
-Two. That is the whole list of anything a user is ever asked for.
+Two, and nothing else a user is ever asked for.
 
 | Permission | Why |
 | --- | --- |
 | `INTERNET` | Fetching the forecast |
 | `ACCESS_NETWORK_STATE` | Telling a dead network from a rate limit |
 
-**No location.** You type a city and pick it from a list. There is no
-"allow while using the app" dialog because there is no location permission
-to ask for.
+No location — you type a city. No background or foreground service: the
+barometer is read only while the screen is open. The manifest also carries
+`DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, which AndroidX generates for
+every app; it is app-private and never appears in a prompt.
 
-**No background service, no foreground service, no boot receiver.** The
-barometer is read only while the screen is open. A background barometer
-means a permanent notification, three more permissions and a standing
-complaint, in exchange for watching the weather change in a pocket.
+## Build
 
-The barometer is declared `required="false"`, so the app installs on
-devices without one.
-
-The merged manifest also contains
-`com.krafttools.barokraft.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, which
-AndroidX generates for every app. It is signature-level, app-private, and
-never appears in a permission prompt. Worth saying here so the claim above
-is not read as "the manifest has nothing else in it" — a claim that would
-itself be false.
-
-## The nowcast
-
-The next six hours are estimated 64 times over. Pressure rate and
-acceleration are each perturbed within limits, and the middle 80% of those
-runs is reported as a band.
-
-**The band is the product. The centre line is a convenience.** It is drawn
-as a filled region with the centre line over it, on the ensemble's own
-scale, and the caption quotes the ensemble size and the half-width —
-because printing the full band width as a plus-or-minus doubles the stated
-uncertainty.
-
-A wide band means the pressure trace is not yet constraining the answer,
-and the app says so rather than picking a number out of the middle anyway.
-Below about 4 hPa of spread the band is treated as too wide to mean
-anything.
-
-The perturbation limits are measured, not chosen for looks:
-
-| Term | Value |
-| --- | --- |
-| Velocity error | 0.08 hPa/hour |
-| Acceleration error | 0.012 hPa/hour² |
-
-<details>
-<summary>Why an ensemble rather than a fitted line</summary>
-
-A regression through the last few hours produces one number with no honest
-error estimate. The temptation is to fit it and print the result, and the
-result will be wrong in a way that looks like a measurement.
-
-Perturbing the two quantities that actually drive the extrapolation —
-the rate and its derivative — and running the ensemble 64 times produces an
-honest spread. It also degrades gracefully: as the window widens the band
-widens on its own, because the extrapolation genuinely gets less certain.
-A fitted line has no such property; it gets confidently wrong.
-
-</details>
-
-## Building
-
-Requires JDK 17. Everything else the build fetches.
+Needs JDK 17.
 
 ```bash
 ./gradlew :app:assembleDebug        # debug APK
-./gradlew :app:testDebugUnitTest    # 243 unit tests
-./gradlew :app:assembleRelease      # release APK, debug-signed
+./gradlew :app:testDebugUnitTest    # unit tests
+./gradlew :app:assembleRelease      # release APK, debug-signed on purpose
 ```
 
-The release APK is deliberately signed with the debug key. There is no
-release keystore to leak, and GitHub releases do not need one.
+## Download
 
-## Tests
-
-**243 unit tests and 40 instrumented tests, all passing.**
-
-| Suite | Tests | What it holds |
-| --- | --- | --- |
-| `ProtocolTest` | 23 | Request construction, response pairing |
-| `MeasureViewModelTest` | 26 | The whole state machine, and the factory that crashed |
-| `MethodTest` | 22 | Every published sentence, tied to its arithmetic |
-| `VerdictTest` | 28 | The six-branch precedence |
-| `NowcastTest` | 20 | The ensemble |
-| `JsonTest` | 20 | Absent versus zero, and Float precision |
-| `AboutTest` | 19 | The About sheet cannot contradict the code |
-| `BaroTest` | 17 | Tendency, altitude, the plot scale |
-| `PolicyTest` | 15 | Which source may be shown at all |
-| `SeaLevelTest` | 14 | Reference staleness and drift |
-| `SkyTest` | 23 | Sky palettes, glyphs, and the hourly and day labels |
-| `UiTextTest` | 10 | The sentences the barometer panel prints |
-| `EdgeContractTest` | 6 | The live API's actual contract |
-
-`EdgeContractTest` hits the real Open-Meteo endpoint. Every other test
-parses a fixture, and a fixture cannot tell you the contract changed. It
-asserts that the arrays are parallel, that `unixtime` really is epoch
-seconds, that `pressure_msl` is present, and that a failure is JSON rather
-than a proxy's HTML. It skips rather than fails without a route, so a build
-on a plane is a green build.
+Releases are on [GitHub](https://github.com/kedharsairam/barokraft/releases).
+No Play Store, no ads, no analytics, no account.
 
 <details>
-<summary>Bugs these tests caught</summary>
+<summary><b>How the nowcast works</b></summary>
 
-**Timestamps were 32 seconds wrong.** The parser read every number as a
-`Float`. A `Float` holds integers exactly only to 2^24, and epoch seconds
-are about 1.76e9 — so `1_759_264_800f.toLong()` is not 1759264800, it is
-1759264768. Every hour label in the app was half a minute early, and
-because the result still looked like a plausible time, nobody would have
-noticed by eye.
+The next six hours are estimated 64 times over. Pressure rate and
+acceleration are each perturbed within **measured** limits — 0.08 hPa/hour
+and 0.012 hPa/hour² — and the middle 80% is reported as a band.
 
-**The drift audit could not fail.** It derived an altitude from the
-reference, fed that altitude back through the sea-level reduction, and
-compared the result with the model. That round trip returns the reference
-exactly, so the drift was 0.0 at every possible reference value. A check
-that cannot detect anything is worse than no check, because it reads as
-reassurance. Caught by one test expecting agreement and one expecting a
-real disagreement, both failing in opposite directions.
+It is an ensemble rather than a fitted line because a regression through the
+last few hours gives one number with no honest error estimate, and the
+temptation is to print it anyway. Perturbing the two quantities that drive
+the extrapolation produces a spread that also widens on its own as the
+window grows, because the extrapolation genuinely gets less certain.
 
-**The app crashed on launch with every test green.** `Cannot create an
-instance of MeasureViewModel` — five constructor parameters, four
-defaulted, and the default factory reflects for a single-argument
-`(Application)` constructor that Kotlin does not generate. Nothing caught it
-because no test constructed the ViewModel. The unit tests test pure
-functions; the instrumented tests drive the screen as a function of a state
-record. It was a green build and a crash on open, and only installing the
-APK found it.
-
-**The header was drawn under the status bar.** `targetSdk 37` enforces
-edge-to-edge, so the window no longer insets itself. The city chip's bounds
-were `y=40..166` on a device with a 63px status bar — drawn, and completely
-untappable, because the system ate the tap. Found by dumping the real view
-hierarchy on a Pixel.
-
-Five more, found during the visual redesign. A different kind of bug from the
-ones above — not wrong arithmetic but wrong wiring and wrong timing — and
-every one invisible to a fully passing suite and visible within seconds of
-opening the app.
-
-**The headline number was blank for ten minutes.** The sampling period was
-also being passed as `maxReportLatencyUs`, which tells Android how long it
-may *batch* events before delivering any. `dumpsys sensorservice` said
-`batchingPeriod=600000000us`.
-
-**A sensor that told nobody.** Readings arrived and were stored, and never
-reached the screen, because the callback that filled the sample list never
-asked the ViewModel to re-derive anything from it.
-
-**A catch-up burst presented as history.** Registering a sensor makes the
-framework deliver a recent batch within milliseconds. Stored as independent
-readings, a freshly launched app drew a 30-point trace and computed a
-three-hour tendency from data taken in one second.
-
-**`:30` on every row of the hourly strip.** The platform's time format was
-applied to a raw UTC timestamp, and on a half-hour offset every row read
-"2:30 pm".
-
-**Dawn happened at 3 a.m.** The twilight check ORed two "is it near either
-edge" tests, so any time before sunrise also satisfied "within an hour of
-sunset".
-
-**An absurd forecast claim.** A freshly launched app read *"About 976.3 hPa
-higher in 6.0.toInt() hours"*. Two defects in one line: the nowcast gated on
-a reading *count* rather than a *duration*, so eight readings spanning two
-minutes passed it and a quadratic was extrapolated six hours from sensor
-noise — with a ±1.6 hPa band, so the absurdity was stated confidently. And
-`$HORIZON_HOURS.toInt()` in a string template substitutes the value and then
-appends `.toInt()` as literal text; Kotlin needs braces for a call.
-
-**A phone with no barometer got a "– hPa" panel.** A dash is not an absence;
-it is a rendered element claiming a measurement exists.
-
-**"Reading the barometer" — on a phone with no barometer.** The quiet branch
-announced a reading whenever there was no tendency, and a device with no
-sensor always has no tendency. The detail then said *"no sea-level reference
-set, so no altitude · no barometer on this device, so no local nowcast"* —
-the app describing its own hardware in two sentences that contradict each
-other. Found on the Realme RMX3998, which has no pressure sensor: exactly
-the case the four-state design exists to handle, and the first hardware that
-had ever exercised it.
-
-**Two features were advertised and unreachable.** The screen said *"set a
-sea-level reference to get one"* with no control that set one, and this
-README opened by calling the nowcast band the product while nothing drew it.
-Both passed every test, because the tests covered the functions and not the
-fact that nothing called them.
-
-**A missing rain probability rendered as 0%.** The API returns `null` for
-every model without an ensemble. Treating that as zero produces "0% chance
-of rain", which is a confident false statement about the weather rather
-than a formatting bug. `JsonValue.asFloatOrNull` is now the only way out of
-the JSON reader, so a null cannot become a zero by accident.
+Below about 4 hPa of spread the band is treated as too wide to mean
+anything and the app says so rather than drawing a confident line.
 
 </details>
 
-## Design notes
+<details>
+<summary><b>Tests</b></summary>
 
-**The screen is a pure function of a state record.** `MeasureContent(state,
-nowMillis)` reads nothing else. The sensor, the HTTP client, storage and the
-clock are constructor parameters of the ViewModel, so all four source
-states, a stale reference, a divergence, a rate limit and a malformed
-response are constructible in a test in a millisecond.
+**243 unit tests and 40 instrumented tests, all passing.** Six of the unit
+tests hit the live Open-Meteo endpoint, because every other test parses a
+fixture and a fixture cannot tell you the contract changed. They skip
+without a route, so a build offline is a green build.
 
-**The trace is not zero-based.** A barometer chip is good to 0.012 hPa and
-a day's weather is 10–40 hPa. Drawn against a zero axis, 1004.0 hPa is a
-flat line pinned at the top of the panel. The scale is centred on the
-median and sized to the variation.
+| Suite | Tests |
+| --- | --- |
+| `ProtocolTest` | 23 |
+| `MeasureViewModelTest` | 26 |
+| `MethodTest` | 22 |
+| `VerdictTest` | 28 |
+| `NowcastTest` | 20 |
+| `JsonTest` | 20 |
+| `AboutTest` | 19 |
+| `SkyTest` | 23 |
+| `UiTextTest` | 10 |
+| `BaroTest` | 17 |
+| `PolicyTest` | 15 |
+| `SeaLevelTest` | 14 |
+| `EdgeContractTest` | 6 |
+
+</details>
+
+<details>
+<summary><b>Twelve defects, none caught by a test</b></summary>
+
+Every one of these was invisible to a fully passing suite and visible within
+seconds of opening the app on real hardware. They are listed because the
+list is the argument for running the thing rather than only building it.
+
+- **Timestamps 32 seconds wrong.** A `Float` holds integers exactly only to
+  2^24, and epoch seconds are about 1.76e9.
+- **The drift audit could not fail.** It round-tripped the reference through
+  itself, so the drift was 0.0 at every possible value.
+- **A crash on launch with every test green**, because no test constructed
+  the ViewModel.
+- **The headline number blank for ten minutes** — the sampling period was
+  also passed as the batching window.
+- **A sensor that told nobody.** Readings were stored and never displayed.
+- **A 30-point trace from one second** of catch-up burst data.
+- **":30" on every hourly row**, from a UTC timestamp rendered in a
+  half-hour offset.
+- **Dawn at 3 a.m.** Two "near an edge" checks ORed together.
+- **A dash where a measurement should be**, on a phone with no barometer.
+- **"Reading the barometer" on a phone with no barometer.**
+- **976.3 hPa of rise in six hours**, from a two-minute history, stated with
+  a ±1.6 hPa band.
+- **Six buttons that rendered, were described to a screen reader, and did
+  nothing when tapped.**
+
+</details>
+
+<details>
+<summary><b>Design notes</b></summary>
+
+**The screen is a pure function of a state record.** The sensor, the HTTP
+client, storage and the clock are constructor parameters of the ViewModel,
+so all four source states — a stale reference, a divergence, a rate limit, a
+malformed response — are constructible in a test in a millisecond.
+
+**The trace is not zero-based.** A barometer chip is good to 0.012 hPa and a
+day's weather is 10–40 hPa. Drawn against a zero axis, 1004.0 hPa is a flat
+line pinned at the top of the panel.
 
 **Measurements are drawn heavier than the line between them.** One is a
 measurement and the other is an interpolation. Drawing them at the same
-weight states both as the same kind of claim, which is the same overstatement
-as printing a fitted forecast with no error band.
+weight states both as the same kind of claim.
 
-**Severity is carried by words, not colour.** Trend accents are a
+**Severity is carried by words, not colour.** The accents are a
 blue-to-violet spread rather than red/green, because the conventional
-pairing is invisible to roughly one man in twelve and a weather app that
-signals severity with a colour half its users cannot see has failed at its
-one job. The warning accent is amber, not red, so it does not pair against
-an "improving" green.
+pairing is invisible to roughly one man in twelve, and the warning accent
+is amber so it does not pair against an "improving" green.
 
 **A hand-written JSON reader.** One endpoint, one response shape. The size
 argument is real but secondary; the reason that matters is that a weather
-API's `null` is *data*, and a general parser makes it easy to lose.
+API's `null` is *data*, and a general parser makes it easy to lose. A missing
+rain probability rendered as 0% is a confident false statement about the
+weather.
 
-## Project layout
+</details>
+
+<details>
+<summary><b>Layout and continuous integration</b></summary>
 
 ```
 core/    Pure Kotlin. No Android. The arithmetic, fully unit-tested.
@@ -289,15 +166,18 @@ ui/      Compose. MeasureContent(state) and nothing else.
 ```
 
 `core/` has no Android dependency, which is why the ensemble, the verdict
-precedence and the reference policy can be tested without a device.
+precedence and the reference policy are testable without a device.
+
+Three CI jobs on every push: unit tests, APK assembly with a size assertion,
+and instrumented tests on an emulator.
+
+</details>
 
 ## Open source
 
-MIT. No analytics, no advertising, no account, no Play Store.
-
-Forecasts come from [Open-Meteo](https://open-meteo.com/), whose data is
-licensed CC BY 4.0 and requires attribution. The attribution is in the app
-itself, not only here, because the user reads the app.
+MIT. Forecast data from [Open-Meteo](https://open-meteo.com/), licensed
+CC BY 4.0, with the attribution in the app as well as here because the user
+reads the app.
 
 If you enjoy BaroKraft, buy me a coffee:
 
