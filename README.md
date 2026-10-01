@@ -291,7 +291,7 @@ ui/      Compose. MeasureContent(state) and nothing else.
 `core/` has no Android dependency, which is why the ensemble, the verdict
 precedence and the reference policy can be tested without a device.
 
-## License
+## Open source
 
 MIT. No analytics, no advertising, no account, no Play Store.
 
@@ -304,3 +304,7 @@ If you enjoy BaroKraft, buy me a coffee:
 <p align="center">
   <a href="https://buymeacoffee.com/kedhartech"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="182"></a>
 </p>
+
+## License
+
+[MIT](LICENSE)
