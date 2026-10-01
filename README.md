@@ -179,6 +179,33 @@ were `y=40..166` on a device with a 63px status bar — drawn, and completely
 untappable, because the system ate the tap. Found by dumping the real view
 hierarchy on a Pixel.
 
+Five more, found during the visual redesign. A different kind of bug from the
+ones above — not wrong arithmetic but wrong wiring and wrong timing — and
+every one invisible to a fully passing suite and visible within seconds of
+opening the app.
+
+**The headline number was blank for ten minutes.** The sampling period was
+also being passed as `maxReportLatencyUs`, which tells Android how long it
+may *batch* events before delivering any. `dumpsys sensorservice` said
+`batchingPeriod=600000000us`.
+
+**A sensor that told nobody.** Readings arrived and were stored, and never
+reached the screen, because the callback that filled the sample list never
+asked the ViewModel to re-derive anything from it.
+
+**A catch-up burst presented as history.** Registering a sensor makes the
+framework deliver a recent batch within milliseconds. Stored as independent
+readings, a freshly launched app drew a 30-point trace and computed a
+three-hour tendency from data taken in one second.
+
+**`:30` on every row of the hourly strip.** The platform's time format was
+applied to a raw UTC timestamp, and on a half-hour offset every row read
+"2:30 pm".
+
+**Dawn happened at 3 a.m.** The twilight check ORed two "is it near either
+edge" tests, so any time before sunrise also satisfied "within an hour of
+sunset".
+
 **A missing rain probability rendered as 0%.** The API returns `null` for
 every model without an ensemble. Treating that as zero produces "0% chance
 of rain", which is a confident false statement about the weather rather
