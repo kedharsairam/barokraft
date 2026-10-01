@@ -42,7 +42,7 @@ open class OpenMeteoClient(
 
         const val READ_TIMEOUT_MS = 10_000L
 
-        const val USER_AGENT = "BaroKraft/0.2.0 (Android; open-source, MIT)"
+        const val USER_AGENT = "BaroKraft/0.3.0 (Android; open-source, MIT)"
 
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
