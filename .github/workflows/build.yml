@@ -86,26 +86,15 @@ jobs:
           retention-days: 30
 
   instrumented:
-    name: instrumented tests (best effort)
+    name: instrumented tests
     runs-on: ubuntu-latest
     needs: unit
     timeout-minutes: 25
-    # Non-blocking, deliberately.
-    #
-    # GitHub's shared runners cannot host this AVD reliably. Across four
-    # attempts the emulator died mid-run every time except one — 17, 6, 9
-    # tests completed, then `device 'emulator-5554' not found`. The suite
-    # itself is sound: the same 40 tests pass on a real handset every time,
-    # which is where a large share of this project's defects were found.
-    #
-    # Two things were tried and both made it worse or irrelevant: more RAM
-    # for the AVD starved the 7 GB VM, and `swiftshader_indirect` is
-    # deprecated. What remains is the runner, not the configuration.
-    #
-    # A job that is red for reasons outside the repository teaches everyone
-    # to ignore red. The unit and assemble jobs gate the build; this one is
-    # a signal, and its own report is uploaded either way.
-    continue-on-error: true
+    # Blocking. It was marked best-effort while the cause was unknown, which
+    # is the wrong reason to relax a check: it hides the problem instead of
+    # recording it. The AOSP image above is the fix — the Play services in
+    # the default image were competing with the AVD for the runner's memory,
+    # and nothing in this app uses them.
     steps:
       - uses: actions/checkout@v4
 
@@ -127,10 +116,22 @@ jobs:
       - name: Instrumented tests on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          # AOSP, not google_apis. This is the change that fixed it.
+          #
+          # The action's default image carries Google Play services, and
+          # their background processes compete with the AVD for the same 7 GB
+          # the runner has. Four runs died mid-suite with 17, 6 and 9 tests
+          # completed before the device vanished. Nothing in this app uses a
+          # Google service — no Play Services, no maps, no sign-in — so the
+          # services are pure cost.
+          target: default
+          api-level: 34
           arch: x86_64
           profile: pixel_6
           disable-animations: true
+          # A boot that takes longer than the default 5 minutes reads as a
+          # crash and gets killed. Given a real deadline instead.
+          emulator-boot-timeout: 900
           # Deliberately the action's defaults for memory and graphics.
           #
           # An earlier version of this file raised the device heap to 4 GB,
