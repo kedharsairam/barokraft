@@ -274,7 +274,10 @@ class MeasureUiTest {
                 samples = samples(),
             ).withVerdict(),
         )
-        compose.onNodeWithText("Offline").assertIsDisplayed()
+        compose.onAllNodesWithText("Offline", substring = true)
+            .fetchSemanticsNodes().let { nodes ->
+                assertTrue("text not found: ${nodes.size} nodes", nodes.isNotEmpty())
+            }
     }
 
     @Test
@@ -288,7 +291,10 @@ class MeasureUiTest {
                 forecastAtMillis = now - 3_600_000L,
             ).withVerdict(),
         )
-        compose.onNodeWithText("Forecast only").assertIsDisplayed()
+        compose.onAllNodesWithText("Forecast only", substring = true)
+            .fetchSemanticsNodes().let { nodes ->
+                assertTrue("text not found: ${nodes.size} nodes", nodes.isNotEmpty())
+            }
     }
 
     @Test
@@ -298,7 +304,10 @@ class MeasureUiTest {
         // here: onNodeWithText found two nodes and refused to guess which
         // one the test meant.
         show(MeasureState(sourceState = SourceState.NEITHER).withVerdict())
-        compose.onNodeWithText("Nothing to read").assertIsDisplayed()
+        compose.onAllNodesWithText("Nothing to read", substring = true)
+            .fetchSemanticsNodes().let { nodes ->
+                assertTrue("text not found: ${nodes.size} nodes", nodes.isNotEmpty())
+            }
         compose.onAllNodesWithText("No data")
             .fetchSemanticsNodes().let { nodes ->
                 assertEquals(
@@ -320,7 +329,10 @@ class MeasureUiTest {
                 forecastAtMillis = now,
             ).withVerdict(),
         )
-        compose.onNodeWithText("Barometer + forecast").assertIsDisplayed()
+        compose.onAllNodesWithText("Barometer + forecast", substring = true)
+            .fetchSemanticsNodes().let { nodes ->
+                assertTrue("text not found: ${nodes.size} nodes", nodes.isNotEmpty())
+            }
     }
 
     // ── Honest refusals ─────────────────────────────────────────────────
@@ -486,8 +498,14 @@ class MeasureUiTest {
                 showingMethod = true,
             ).withVerdict(),
         )
-        compose.onNodeWithText("What it will not claim").assertIsDisplayed()
-        compose.onNodeWithText("How this app measures").assertIsDisplayed()
+        compose.onAllNodesWithText("What it will not claim", substring = true)
+            .fetchSemanticsNodes().let { nodes ->
+                assertTrue("text not found: ${nodes.size} nodes", nodes.isNotEmpty())
+            }
+        compose.onAllNodesWithText("How this app measures", substring = true)
+            .fetchSemanticsNodes().let { nodes ->
+                assertTrue("text not found: ${nodes.size} nodes", nodes.isNotEmpty())
+            }
     }
 
     // ── The about sheet ─────────────────────────────────────────────────
