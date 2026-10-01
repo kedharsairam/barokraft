@@ -39,8 +39,14 @@ producing a plausible wrong altitude. When a forecast is available, BaroKraft
 compares the two and reports the disagreement. No offline-only app can do
 this, because it has nothing to check itself against.
 
+**Gives you an altitude if you want one.** A barometer cannot find altitude
+on its own — it needs a sea-level reference, and without one the app shows
+no altitude at all rather than a plausible wrong number. Set one from a
+known altitude (a floor, a contour, a sign) or from a QNH if you have one.
+
 **Works on a phone with no barometer.** Every budget handset and most
-tablets have no pressure sensor. That is ordinary hardware, not a broken
+tablets have no pressure sensor. Verified on a Realme RMX3998, which has
+none. That is ordinary hardware, not a broken
 phone, so the app shows the forecast and says plainly that there is no
 local reading — rather than displaying zeros or hiding the difference.
 
@@ -78,7 +84,11 @@ The next six hours are estimated 64 times over. Pressure rate and
 acceleration are each perturbed within limits, and the middle 80% of those
 runs is reported as a band.
 
-**The band is the product. The centre line is a convenience.**
+**The band is the product. The centre line is a convenience.** It is drawn
+as a filled region with the centre line over it, on the ensemble's own
+scale, and the caption quotes the ensemble size and the half-width —
+because printing the full band width as a plus-or-minus doubles the stated
+uncertainty.
 
 A wide band means the pressure trace is not yet constraining the answer,
 and the app says so rather than picking a number out of the middle anyway.
@@ -113,7 +123,7 @@ Requires JDK 17. Everything else the build fetches.
 
 ```bash
 ./gradlew :app:assembleDebug        # debug APK
-./gradlew :app:testDebugUnitTest    # 228 unit tests
+./gradlew :app:testDebugUnitTest    # 241 unit tests
 ./gradlew :app:assembleRelease      # release APK, debug-signed
 ```
 
@@ -122,14 +132,14 @@ release keystore to leak, and GitHub releases do not need one.
 
 ## Tests
 
-**228 unit tests and 26 instrumented tests, all passing.**
+**241 unit tests and 32 instrumented tests, all passing.**
 
 | Suite | Tests | What it holds |
 | --- | --- | --- |
 | `ProtocolTest` | 23 | Request construction, response pairing |
 | `MeasureViewModelTest` | 26 | The whole state machine, and the factory that crashed |
 | `MethodTest` | 22 | Every published sentence, tied to its arithmetic |
-| `VerdictTest` | 25 | The six-branch precedence |
+| `VerdictTest` | 28 | The six-branch precedence |
 | `NowcastTest` | 20 | The ensemble |
 | `JsonTest` | 20 | Absent versus zero, and Float precision |
 | `AboutTest` | 17 | The About sheet cannot contradict the code |
@@ -137,6 +147,7 @@ release keystore to leak, and GitHub releases do not need one.
 | `PolicyTest` | 15 | Which source may be shown at all |
 | `SeaLevelTest` | 14 | Reference staleness and drift |
 | `SkyTest` | 23 | Sky palettes, glyphs, and the hourly and day labels |
+| `UiTextTest` | 10 | The sentences the barometer panel prints |
 | `EdgeContractTest` | 6 | The live API's actual contract |
 
 `EdgeContractTest` hits the real Open-Meteo endpoint. Every other test
@@ -213,6 +224,24 @@ minutes passed it and a quadratic was extrapolated six hours from sensor
 noise — with a ±1.6 hPa band, so the absurdity was stated confidently. And
 `$HORIZON_HOURS.toInt()` in a string template substitutes the value and then
 appends `.toInt()` as literal text; Kotlin needs braces for a call.
+
+**A phone with no barometer got a "– hPa" panel.** A dash is not an absence;
+it is a rendered element claiming a measurement exists.
+
+**"Reading the barometer" — on a phone with no barometer.** The quiet branch
+announced a reading whenever there was no tendency, and a device with no
+sensor always has no tendency. The detail then said *"no sea-level reference
+set, so no altitude · no barometer on this device, so no local nowcast"* —
+the app describing its own hardware in two sentences that contradict each
+other. Found on the Realme RMX3998, which has no pressure sensor: exactly
+the case the four-state design exists to handle, and the first hardware that
+had ever exercised it.
+
+**Two features were advertised and unreachable.** The screen said *"set a
+sea-level reference to get one"* with no control that set one, and this
+README opened by calling the nowcast band the product while nothing drew it.
+Both passed every test, because the tests covered the functions and not the
+fact that nothing called them.
 
 **A missing rain probability rendered as 0%.** The API returns `null` for
 every model without an ensemble. Treating that as zero produces "0% chance
