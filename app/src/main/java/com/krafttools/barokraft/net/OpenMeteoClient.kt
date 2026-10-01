@@ -7,6 +7,30 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
+ * The request header, derived from the build and never written by hand.
+ *
+ * ## Why this is not a constant
+ *
+ * A hand-maintained version string is a version string that will be wrong,
+ * and this one was. v0.3.2 was published carrying the **0.3.1 binary**:
+ * the header had been bumped in the same shell command whose test run
+ * failed, so the APK on disk was still the previous build, and
+ * `gh release create` attached it without being asked what it was.
+ *
+ * Now there is exactly one version in the project. The header cannot
+ * disagree with the binary, and `ProtocolTest` asserts it does not.
+ *
+ * ## Why it matters beyond tidiness
+ *
+ * Open-Meteo sees this on every request. A release whose header disagrees
+ * with its own binary is visible to the API as well as to a user, which
+ * makes it a debugging aid rather than only a cosmetic one.
+ */
+internal val userAgent: String =
+    "BaroKraft/" + com.krafttools.barokraft.BuildConfig.VERSION_NAME +
+        " (Android; open-source, MIT)"
+
+/**
  * The one network call this app makes.
  *
  * ## Timeouts are not a detail
@@ -42,7 +66,6 @@ open class OpenMeteoClient(
 
         const val READ_TIMEOUT_MS = 10_000L
 
-        const val USER_AGENT = "BaroKraft/0.3.1 (Android; open-source, MIT)"
 
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -67,7 +90,7 @@ open class OpenMeteoClient(
         val url = Protocol.buildUrl(latitude, longitude, forecastDays)
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .header("Accept", "application/json")
             .get()
             .build()
@@ -120,7 +143,7 @@ open class OpenMeteoClient(
 
         val request = Request.Builder()
             .url(Protocol.buildGeocodingUrl(query))
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .get()
             .build()
 

@@ -500,19 +500,30 @@ class MeasureViewModelTest {
             client.blocked.await(10, java.util.concurrent.TimeUnit.SECONDS),
         )
 
-        // 2. Issue a newer query while the first is still running.
+        // 2. Issue a newer query while the first is still running, then
+        // wait for the *state* rather than for the call.
+        //
+        // Waiting for the call and then idling the looper was the previous
+        // version, and it was flaky: the answer is produced on an IO thread
+        // and only then posted to the main dispatcher, so idling the looper
+        // can complete before the post arrives. `awaitResults` waits for the
+        // condition instead, which cannot be early or late.
         model.onSearchQueryChange("Palakkad")
         client.awaitCalls(2)
-        idle()
+        awaitResults(model) { it.isNotEmpty() }
         assertEquals(
             "the newer answer must be shown",
             listOf("Palakkad"),
             model.state.searchResults.map { it.name },
         )
 
-        // 3. Now let the stale one land. It must change nothing.
+        // 3. Now let the stale one land. It must change nothing. One more
+        // round-trip is awaited so that "nothing changed" means the late
+        // answer had its chance rather than that it had not arrived yet.
         client.release.countDown()
+        client.awaitCalls(2)
         idle()
+        awaitResults(model) { it.isNotEmpty() }
         assertEquals(
             "a late answer for an old query must not overwrite a newer one",
             listOf("Palakkad"),
@@ -576,6 +587,22 @@ class MeasureViewModelTest {
     }
 
     private class CountingClient : ScriptedClient(emptyMap())
+
+    /**
+     * Wait until [condition] holds on the search results.
+     *
+     * A bounded wait for a *condition*, never a sleep. The previous version
+     * of this test idled the main looper a fixed number of times and then
+     * asserted, which passes or fails depending on whether the IO thread
+     * had posted its result yet.
+     */
+    private fun awaitResults(model: MeasureViewModel, condition: (List<OpenMeteo.Place>) -> Boolean) {
+        val deadline = System.nanoTime() + 10_000_000_000L
+        while (!condition(model.state.searchResults) && System.nanoTime() < deadline) {
+            idle(50)
+            Thread.sleep(5)
+        }
+    }
 
     private fun place(name: String, region: String) = OpenMeteo.Place(
         name = name,

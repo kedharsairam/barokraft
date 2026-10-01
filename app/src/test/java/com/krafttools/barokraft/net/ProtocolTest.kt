@@ -251,6 +251,21 @@ class ProtocolTest {
         assertEquals("Singapore", place.displayName)
     }
 
+    @Test
+    fun `the user agent carries the version the build declares`() {
+        // v0.3.2 was published carrying the 0.3.1 binary, because the
+        // header held a hand-written version string and the APK on disk was
+        // from the previous build. Deriving the header from BuildConfig
+        // removes the possibility; this test pins that it is still derived.
+        val ua = userAgent
+        val version = com.krafttools.barokraft.BuildConfig.VERSION_NAME
+        assertTrue(
+            "user agent \"$ua\" does not carry the build version \"$version\"",
+            ua.contains(version),
+        )
+        assertTrue("expected a three-part version, got $version", Regex("\\d+\\.\\d+\\.\\d+").matches(version))
+    }
+
     // ── Failure classification ──────────────────────────────────────────
 
     @Test

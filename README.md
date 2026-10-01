@@ -75,14 +75,14 @@ anything and the app says so rather than drawing a confident line.
 <details>
 <summary><b>Tests</b></summary>
 
-**243 unit tests and 40 instrumented tests, all passing.** Six of the unit
+**244 unit tests and 40 instrumented tests, all passing.** Six of the unit
 tests hit the live Open-Meteo endpoint, because every other test parses a
 fixture and a fixture cannot tell you the contract changed. They skip
 without a route, so a build offline is a green build.
 
 | Suite | Tests |
 | --- | --- |
-| `ProtocolTest` | 23 |
+| `ProtocolTest` | 24 |
 | `MeasureViewModelTest` | 26 |
 | `MethodTest` | 22 |
 | `VerdictTest` | 28 |
