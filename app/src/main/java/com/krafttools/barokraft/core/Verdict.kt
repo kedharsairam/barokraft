@@ -217,10 +217,10 @@ private fun horizonWording(change: Float, band: ClosedFloatingPointRange<Float>?
         else -> "About ${fmt1(magnitude)} hPa $direction"
     }
     return if (band == null) {
-        "$quantised in $HORIZON_HOURS.toInt() hours."
+        "$quantised in ${HORIZON_HOURS.toInt()} hours."
     } else {
         val width = kotlin.math.abs(band.endInclusive - band.start)
-        "$quantised in $HORIZON_HOURS.toInt() hours, somewhere between " +
+        "$quantised in ${HORIZON_HOURS.toInt()} hours, somewhere between " +
             "${fmt1(band.start)} and ${fmt1(band.endInclusive)} hPa, a spread of ${fmt1(width)}."
     }
 }

@@ -1,6 +1,8 @@
 package com.krafttools.barokraft.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -205,6 +207,105 @@ class VerdictTest {
         val wide = listOf(NowcastPoint(now + 3_600_000L, 1002f, 990f, 1015f))
         val v = verdict(both(points = wide))
         assertFalse("a wide band must not become a headline", v.tone == VerdictTone.NOWCAST)
+    }
+
+    // ── The two-minute history ─────────────────────────────────────────
+
+    @Test
+    fun `a history of two minutes produces no nowcast at all`() {
+        // Reproduced from a real device, where this printed:
+        //     rising fast — About 976.3 hPa higher in 6 hours
+        // A quadratic fitted to two minutes and extrapolated six hours is
+        // dominated by sensor noise, and the only gate (`size >= 6`) said
+        // nothing about *when* the readings were taken.
+        val start = 1_800_000_000_000L
+        val samples = (0 until 8).map { i ->
+            PressureSample(start + i * 20_000L, 1009f + i * 0.0004f)
+        }
+        assertTrue(
+            "8 readings over ~2 minutes must not extrapolate 6 hours",
+            nowcast(samples, nowMillis = start + 8 * 20_000L).isEmpty(),
+        )
+    }
+
+    @Test
+    fun `a history of two minutes cannot produce a nowcast verdict`() {
+        val start = 1_800_000_000_000L
+        val samples = (0 until 8).map { i ->
+            PressureSample(start + i * 20_000L, 1009f + i * 0.0004f)
+        }
+        val now = start + 8 * 20_000L
+        val v = verdict(
+            VerdictInput(
+                state = SourceState.BAROMETER_ONLY,
+                nowMillis = now,
+                nowcastPoints = nowcast(samples, nowMillis = now),
+                currentHpa = 1009f,
+            ),
+        )
+        assertNotEquals(
+            "a too-short history must not claim a nowcast direction",
+            VerdictTone.NOWCAST, v.tone,
+        )
+        // The defect was a predicted *change* of 976 hPa, not a reading.
+        // A current pressure of 1009.0 hPa is ordinary, so the assertion
+        // targets the projection wording rather than any large number.
+        val spoken = v.headline + " " + (v.detail ?: "")
+        for (claim in listOf("hPa higher in", "hPa lower in")) {
+            assertTrue(
+                "a two-minute history must not project a change: $spoken",
+                !spoken.contains(claim),
+            )
+        }
+    }
+
+    @Test
+    fun `a real window still produces a nowcast`() {
+        // The gate must not simply switch the feature off. Three hours of
+        // ten-minute samples is the ordinary case.
+        val start = 1_800_000_000_000L
+        val now = start + 18 * 600_000L
+        val samples = (0 until 19).map { i ->
+            PressureSample(start + i * 600_000L, 1010f - i * 0.05f)
+        }
+        val points = nowcast(samples, nowMillis = now)
+        assertTrue("three hours of history should extrapolate", points.isNotEmpty())
+        assertEquals(
+            VerdictTone.NOWCAST,
+            verdict(
+                VerdictInput(
+                    state = SourceState.BAROMETER_ONLY,
+                    nowMillis = now,
+                    nowcastPoints = points,
+                    currentHpa = 1009.1f,
+                ),
+            ).tone,
+        )
+    }
+
+    @Test
+    fun `no published sentence leaks a method call into the text`() {
+        // A string template writes `$x.toInt()` as the value followed by the
+        // literal text ".toInt()", because Kotlin needs braces for a call.
+        // It shipped as "About 976.3 hPa higher in 6.0.toInt() hours".
+        val start = 1_800_000_000_000L
+        val now = start + 18 * 600_000L
+        val samples = (0 until 19).map { i ->
+            PressureSample(start + i * 600_000L, 1010f - i * 0.05f)
+        }
+        val v = verdict(
+            VerdictInput(
+                state = SourceState.BAROMETER_ONLY,
+                nowMillis = now,
+                nowcastPoints = nowcast(samples, nowMillis = now),
+                currentHpa = 1009.1f,
+            ),
+        )
+        val text = v.headline + " " + (v.detail ?: "")
+        for (leak in listOf(".toInt()", ".toFloat()", ".toString()", "null")) {
+            assertTrue("\"$leak\" leaked into: $text", !text.contains(leak))
+        }
+        assertTrue("the horizon should read as whole hours: $text", text.contains("6 hours"))
     }
 
     // ── 6. Quiet ────────────────────────────────────────────────────────

@@ -41,6 +41,29 @@ import kotlin.random.Random
 /** How far ahead the barometer alone is allowed to speak. */
 const val HORIZON_HOURS = 6f
 
+/**
+ * The shortest history the ensemble will extrapolate from.
+ *
+ * ## Why a duration and not a count
+ *
+ * Because `samples.size >= 6` was the only gate, and a count says nothing
+ * about *when* the readings were taken. Six readings spanning two minutes
+ * passed it — and produced, on a real device:
+ *
+ *     rising fast — About 976.3 hPa higher in 6 hours
+ *
+ * A quadratic fitted to two minutes of data and extrapolated six hours is
+ * dominated by sensor noise: 0.012 hPa of chip error divided by a short
+ * baseline becomes a large apparent velocity, and the error terms are
+ * scaled for realistic windows rather than for that. The band around it was
+ * plus or minus 1.6 hPa, so the app stated a confident and absurd number.
+ *
+ * Thirty minutes is three samples at the ten-minute sampling period, which
+ * is the shortest window that establishes a rate worth projecting. Below it
+ * the app says it is still collecting rather than guessing.
+ */
+const val MIN_HISTORY_MINUTES = 30f
+
 /** Step between forecast points. */
 const val STEP_HOURS = 1f
 
@@ -206,6 +229,9 @@ fun nowcast(
 ): List<NowcastPoint> {
     if (samples.size < 6) return emptyList()
     val ordered = samples.sortedBy { it.atMillis }
+    // The span gate. See MIN_HISTORY_MINUTES for why a count is not enough.
+    val spanMillis = ordered.last().atMillis - ordered.first().atMillis
+    if (spanMillis < MIN_HISTORY_MINUTES * 60_000L) return emptyList()
     val base = fitQuadratic(ordered) ?: return emptyList()
     val t0 = ordered.first().atMillis
 
