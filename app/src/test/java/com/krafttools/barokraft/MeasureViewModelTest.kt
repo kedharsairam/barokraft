@@ -20,6 +20,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import androidx.test.core.app.ApplicationProvider
+import android.os.Looper
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowLooper
 import java.io.IOException
 
 /**
@@ -51,6 +54,20 @@ class MeasureViewModelTest {
     private var now = 1_800_000_000_000L
 
     private fun clock(): Long = now
+
+    /**
+     * Let the debounce elapse and the IO work land.
+     *
+     * `Thread.sleep` does nothing here. Robolectric runs the main looper
+     * paused, so a `delay` inside `viewModelScope` never resumes unless the
+     * looper is advanced explicitly — and the failure is a silent empty
+     * result rather than a timeout, which reads exactly like the bug being
+     * tested for. Sleeping 600 ms and finding nothing proves nothing.
+     */
+    private fun idle(millis: Long = 1_000) {
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(millis))
+        org.robolectric.Robolectric.flushForegroundThreadScheduler()
+    }
 
     private fun forecast(hours: Int = 24, msl: Float? = 1006.4f, code: Int = 51) = Protocol.Forecast(
         latitude = 50.9375,
@@ -150,6 +167,13 @@ class MeasureViewModelTest {
     private fun vm(
         online: Boolean = true,
         hasBarometer: Boolean = true,
+        client: OpenMeteoClient? = null,
+    ): MeasureViewModel = vmWithClient(client ?: client(online), online, hasBarometer)
+
+    private fun vmWithClient(
+        client: OpenMeteoClient,
+        online: Boolean = true,
+        hasBarometer: Boolean = true,
     ): MeasureViewModel {
         // `present()` / `absent()` rather than the real constructor, so
         // no SensorManager is involved and the readings arrive through
@@ -162,10 +186,13 @@ class MeasureViewModelTest {
         return MeasureViewModel(
             application = application,
             pressureSource = source,
-            client = client(online = online),
+            client = client,
             store = PlaceStore(ApplicationProvider.getApplicationContext()),
             clock = ::clock,
             onlineCheck = { online },
+            // A test must not race a real 350 ms timer. Zero means "search
+            // now", so the test controls when work starts.
+            searchDebounceMs = 0,
         )
     }
 
@@ -393,6 +420,171 @@ class MeasureViewModelTest {
             model.state.verdict?.tone != VerdictTone.DIVERGENCE,
         )
     }
+
+    // ── The city search ─────────────────────────────────────────────────
+
+    @Test
+    fun `a short query is not sent to the api`() {
+        // The geocoder answers `Pa` with a dozen villages of that name in
+        // four countries. Offering them for the second character of a
+        // longer word is noise, not help.
+        val model = vm()
+        model.onSearchQueryChange("P")
+        assertEquals(
+            "a one-character query must not be searched",
+            emptyList<OpenMeteo.Place>(),
+            model.state.searchResults,
+        )
+        assertTrue("and must not show a spinner", !model.state.searching)
+    }
+
+    @Test
+    fun `typing does not fire a request per keystroke`() {
+        // Found on the device: typing "Palakkad" cost eight calls against a
+        // 10,000-a-day free tier. This asserts the debounce coalesces
+        // rather than asserting the timing directly, so it cannot become
+        // flaky on a slow machine.
+        val counting = CountingClient()
+        // The *production* debounce, not the zero a test can inject. This
+        // test is about the debounce existing, so using a zero debounce
+        // here would assert that eight keystrokes make eight calls — which
+        // is exactly what the fix prevents.
+        val model = MeasureViewModel(
+            application = application,
+            pressureSource = PressureSource.present(application, ::clock),
+            client = counting,
+            store = PlaceStore(ApplicationProvider.getApplicationContext()),
+            clock = ::clock,
+            onlineCheck = { true },
+        )
+        // A fast typist: every character in the same instant, the worst case
+        // for a debounce.
+        "Palakkad".forEachIndexed { i, _ ->
+            model.onSearchQueryChange("Palakkad".take(i + 1))
+        }
+        idle(400) // past the real 350 ms
+        counting.awaitCalls(1)
+        idle()
+        assertEquals(
+            "eight keystrokes must cost one call, not eight; saw ${counting.calls}",
+            listOf("Palakkad"),
+            counting.calls.toList(),
+        )
+    }
+
+    @Test
+    fun `a stale response cannot overwrite a newer answer`() {
+        // The defect: requests for `p`, `pa`, `pal`… were all in flight and
+        // whichever landed last won, so results for `Pa` — Ivory Coast,
+        // Kaduna, Burkina Faso — appeared under a field reading
+        // `Palakkad`. Found by typing into a real picker on the device.
+        //
+        // Written with latches rather than sleeps. A `Thread.sleep` here
+        // made the test pass or fail depending on machine load, and a flaky
+        // test is worse than none: it trains everyone to re-run it.
+        val client = ScriptedClient(
+            answers = mapOf(
+                "Pa" to listOf(place("Pa", "Ivory Coast")),
+                "Palakkad" to listOf(place("Palakkad", "Kerala")),
+            ),
+            blockFor = "Pa",
+        )
+        val model = vmWithClient(client)
+
+        // 1. Start the first query and wait until it is genuinely in flight
+        //    and blocked inside the client.
+        model.onSearchQueryChange("Pa")
+        client.awaitCalls(1)
+        assertTrue(
+            "the first query should be blocked inside the client",
+            client.blocked.await(10, java.util.concurrent.TimeUnit.SECONDS),
+        )
+
+        // 2. Issue a newer query while the first is still running.
+        model.onSearchQueryChange("Palakkad")
+        client.awaitCalls(2)
+        idle()
+        assertEquals(
+            "the newer answer must be shown",
+            listOf("Palakkad"),
+            model.state.searchResults.map { it.name },
+        )
+
+        // 3. Now let the stale one land. It must change nothing.
+        client.release.countDown()
+        idle()
+        assertEquals(
+            "a late answer for an old query must not overwrite a newer one",
+            listOf("Palakkad"),
+            model.state.searchResults.map { it.name },
+        )
+    }
+
+    @Test
+    fun `a cleared query empties the results immediately`() {
+        val model = vm()
+        model.onSearchQueryChange("Palakkad")
+        idle()
+        model.onSearchQueryChange("")
+        assertEquals(emptyList<OpenMeteo.Place>(), model.state.searchResults)
+    }
+
+    /**
+     * A client that records what it was asked and can be made to answer
+     * late.
+     *
+     * `delay` on the first response is what makes the race reproducible:
+     * the ViewModel must discard an answer that arrives after a newer query
+     * has already been issued, and without a slow first response the test
+     * passes whether or not the guard exists.
+     */
+    private open class ScriptedClient(
+        private val answers: Map<String, List<OpenMeteo.Place>>,
+        private val blockFor: String? = null,
+    ) : OpenMeteoClient(clock = { 1_800_000_000_000L }, isOnline = { true }) {
+        val calls = java.util.concurrent.CopyOnWriteArrayList<String>()
+
+        /** Counted down once the blocked query is actually inside search. */
+        val blocked = java.util.concurrent.CountDownLatch(1)
+
+        /** Released by the test to let the blocked query finish. */
+        val release = java.util.concurrent.CountDownLatch(1)
+
+        /**
+         * Wait until [n] calls have been made.
+         *
+         * A bounded wait for a *condition*, unlike a sleep, so it cannot
+         * pass or fail according to how loaded the machine is.
+         */
+        fun awaitCalls(n: Int) {
+            val deadline = System.nanoTime() + 10_000_000_000L
+            while (calls.size < n && System.nanoTime() < deadline) Thread.sleep(5)
+            check(calls.size >= n) { "expected $n calls, saw ${calls.toList()}" }
+        }
+
+        override fun search(query: String): NetResult<List<OpenMeteo.Place>> {
+            calls += query
+            if (query == blockFor) {
+                blocked.countDown()
+                // Blocked rather than delayed. A sleep makes the outcome
+                // depend on how fast the machine is, which is how this
+                // test was flaky: it passed on a rerun of the same commit.
+                release.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            }
+            return NetResult.Ok(answers[query].orEmpty(), 1_800_000_000_000L)
+        }
+    }
+
+    private class CountingClient : ScriptedClient(emptyMap())
+
+    private fun place(name: String, region: String) = OpenMeteo.Place(
+        name = name,
+        country = null,
+        admin1 = region,
+        latitude = 1.0,
+        longitude = 2.0,
+        elevationMetres = null,
+    )
 
     // ── Lifecycle ───────────────────────────────────────────────────────
 

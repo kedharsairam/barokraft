@@ -24,7 +24,7 @@ import okhttp3.Request
  * parsed at all. A streaming reader here would save nothing and would add
  * a way to get a truncated forecast that parses.
  */
-class OpenMeteoClient(
+open class OpenMeteoClient(
     private val clock: () -> Long = System::currentTimeMillis,
     private val isOnline: () -> Boolean = { true },
     private val client: OkHttpClient = defaultClient(),
@@ -104,8 +104,17 @@ class OpenMeteoClient(
         }
     }
 
-    /** Search for a city. An empty result is a successful empty list. */
-    fun search(query: String): NetResult<List<OpenMeteo.Place>> {
+    /**
+     * Search for a city. An empty result is a successful empty list.
+     *
+     * `open` because the ViewModel's search is the one place where a test
+     * genuinely needs to control *what arrives and in what order* — the
+     * city picker's whole correctness argument is about out-of-order
+     * responses, and that cannot be provoked by a real network
+     * deterministically. The class is already constructed with an injected
+     * clock and an injected connectivity predicate for the same reason.
+     */
+    open fun search(query: String): NetResult<List<OpenMeteo.Place>> {
         if (!isOnline()) return NetResult.Failed(Failure.Offline)
         if (query.isBlank()) return NetResult.Ok(emptyList(), clock())
 

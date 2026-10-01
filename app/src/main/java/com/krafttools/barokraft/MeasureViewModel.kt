@@ -70,6 +70,15 @@ class MeasureViewModel(
      * unreachable in a test for exactly that reason.
      */
     private val onlineCheck: () -> Boolean = { isOnline(application) },
+    /**
+     * The city-search debounce.
+     *
+     * A constructor parameter so a test can set it to zero and control when
+     * work starts, rather than racing a real 350 ms timer. A test that
+     * sleeps to outlast a timer is a test whose result depends on how fast
+     * the machine is.
+     */
+    private val searchDebounceMs: Long = SEARCH_DEBOUNCE_MS,
 ) : AndroidViewModel(application) {
 
     /** The one piece of state the UI reads. */
@@ -77,6 +86,40 @@ class MeasureViewModel(
         private set
 
     private var lastFetchedMillis: Long? = null
+
+    /**
+     * Incremented on every query change; a search whose generation is stale
+     * throws its result away.
+     *
+     * Cancelling the coroutine is not sufficient on its own. A request
+     * already handed to OkHttp is not interrupted by cancelling the calling
+     * coroutine, so both mechanisms are needed: the job is cancelled so the
+     * response is not awaited, and the generation check so a response that
+     * did arrive cannot overwrite a newer answer.
+     */
+    private var searchGeneration = 0
+    private var searchJob: kotlinx.coroutines.Job? = null
+
+    private companion object {
+        /**
+         * How long typing must pause before a search runs.
+         *
+         * 350 ms is long enough that a normal typing speed coalesces into
+         * one request, and short enough that the list still feels live.
+         * Typing "Palakkad" now costs one call rather than eight.
+         */
+        const val SEARCH_DEBOUNCE_MS = 350L
+
+        /**
+         * The shortest query worth searching.
+         *
+         * Two characters. Open-Meteo's geocoder will happily answer `Pa`
+         * with a dozen villages of that name in four countries, and
+         * offering all of them for the second character of a longer word is
+         * noise rather than help.
+         */
+        const val MIN_QUERY_LENGTH = 2
+    }
     private var cachedForecast: Protocol.Forecast? = null
     private var reference: SeaLevel? = null
 
@@ -181,7 +224,7 @@ class MeasureViewModel(
 
     fun openPlacePicker() {
         state = state.copy(pickingPlace = true)
-        if (state.searchResults.isEmpty()) search(state.searchQuery)
+        if (state.searchResults.isEmpty()) searchNow(state.searchQuery)
     }
 
     fun dismissPlacePicker() {
@@ -220,16 +263,57 @@ class MeasureViewModel(
         refresh(force = true)
     }
 
+    /**
+     * Handle a change to the city query.
+     *
+     * Every keystroke restarts a debounce timer rather than starting a
+     * request. Found on the device, not by reading: typing "Palakkad" fired
+     * **eight** requests — one per character — against a free tier that
+     * allows 10,000 a day, and the eight responses raced each other so that
+     * results for `Pa` (Ivory Coast, Kaduna, Burkina Faso) were displayed
+     * under a field reading `Palakkad`.
+     *
+     * Both halves of that matter and neither is fixed by the other. The
+     * debounce reduces the request count; the generation check below is
+     * what makes the answer correct, because even one request per pause can
+     * be overtaken by a later one.
+     */
     fun onSearchQueryChange(query: String) {
         state = state.copy(searchQuery = query, searchEmpty = false)
-        if (query.length >= 2) search(query) else state = state.copy(searchResults = emptyList())
+        // Any pending search is now for a query the user has moved past, so
+        // its answer must not be shown. Bumped even when the query is too
+        // short to search.
+        searchGeneration++
+        searchJob?.cancel()
+
+        if (query.trim().length < MIN_QUERY_LENGTH) {
+            state = state.copy(searchResults = emptyList(), searching = false)
+            return
+        }
+        searchJob = viewModelScope.launch {
+            delay(searchDebounceMs)
+            runSearch(query)
+        }
     }
 
-    private fun search(query: String) {
+    /** Run a search immediately, without the debounce. Used on open. */
+    private fun searchNow(query: String) {
+        searchGeneration++
+        searchJob?.cancel()
+        if (query.trim().length < MIN_QUERY_LENGTH) {
+            state = state.copy(searchResults = emptyList(), searching = false)
+            return
+        }
+        searchJob = viewModelScope.launch { runSearch(query) }
+    }
+
+    private suspend fun runSearch(query: String) {
+        val generation = searchGeneration
         state = state.copy(searching = true)
-        viewModelScope.launch {
-            when (val result = withContext(Dispatchers.IO) { client.search(query) }) {
-                is NetResult.Ok -> state = state.copy(
+        when (val result = withContext(Dispatchers.IO) { client.search(query) }) {
+            is NetResult.Ok -> {
+                if (generation != searchGeneration) return
+                state = state.copy(
                     searching = false,
                     searchResults = result.value,
                     // An empty result for a real query is a legitimate
@@ -237,7 +321,10 @@ class MeasureViewModel(
                     // empty list the user cannot interpret.
                     searchEmpty = result.value.isEmpty(),
                 )
-                is NetResult.Failed -> state = state.copy(
+            }
+            is NetResult.Failed -> {
+                if (generation != searchGeneration) return
+                state = state.copy(
                     searching = false,
                     searchResults = emptyList(),
                     searchEmpty = false,
