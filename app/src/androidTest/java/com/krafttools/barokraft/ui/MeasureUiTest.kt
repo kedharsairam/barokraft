@@ -354,9 +354,9 @@ class MeasureUiTest {
                 forecastAtMillis = now,
             ).withVerdict(),
         )
-        compose.onAllNodesWithText("too old to trust", substring = true)
+        compose.onAllNodesWithContentDescription("Tap to set it again", substring = true)
             .fetchSemanticsNodes().let { n ->
-                assertTrue("a stale reference should be explained, got ${n.size}", n.isNotEmpty())
+                assertTrue("a stale reference should be resettable, got ${n.size}", n.isNotEmpty())
             }
     }
 
@@ -557,6 +557,134 @@ class MeasureUiTest {
         compose.onAllNodesWithText("ordinary hardware", substring = true)
             .fetchSemanticsNodes().let { n ->
                 assertTrue("the sheet should say it, got ${n.size}", n.isNotEmpty())
+            }
+    }
+
+    // ── The nowcast band ────────────────────────────────────────────────
+
+    @Test
+    fun the_nowcast_band_is_drawn_with_its_uncertainty_stated() {
+        // The band is the product. For two releases the ensemble was
+        // computed, tested and carried in the state record and rendered as
+        // nothing at all.
+        val pts = nowcast(samples(-1.5f), nowMillis = now)
+        show(
+            MeasureState(
+                sourceState = SourceState.BAROMETER_ONLY,
+                currentHpa = 1002f,
+                samples = samples(-1.5f),
+                nowcast = pts,
+            ).withVerdict(points = pts),
+        )
+        compose.onAllNodesWithText("NOWCAST").fetchSemanticsNodes().let { n ->
+            assertTrue("the nowcast heading must be on screen, got ${n.size}", n.isNotEmpty())
+        }
+        compose.onAllNodesWithText("band", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue(
+                    "the band must be described, got ${n.size}",
+                    n.isNotEmpty(),
+                )
+            }
+    }
+
+    @Test
+    fun the_nowcast_band_states_a_half_width_not_the_full_width() {
+        // uncertaintyHpa is the full width between the edges. Quoting it as
+        // a plus-or-minus doubles the stated uncertainty.
+        val pts = nowcast(samples(-1.5f), nowMillis = now)
+        val caption = nowcastCaption(pts, 6f)
+        assertTrue("expected a half-width in: $caption", caption.contains("plus or minus"))
+        show(
+            MeasureState(
+                sourceState = SourceState.BAROMETER_ONLY,
+                currentHpa = 1002f,
+                samples = samples(-1.5f),
+                nowcast = pts,
+            ).withVerdict(points = pts),
+        )
+        compose.onAllNodesWithContentDescription(caption, substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the caption must be announced", n.isNotEmpty())
+            }
+    }
+
+    @Test
+    fun no_band_is_shown_without_a_history() {
+        // Below the span gate there is no nowcast, so there is nothing to
+        // draw — and an empty plot area reads as a rendering fault.
+        show(
+            MeasureState(
+                sourceState = SourceState.BAROMETER_ONLY,
+                currentHpa = 1002f,
+                samples = samples(-1.5f).take(3),
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithText("NOWCAST").fetchSemanticsNodes().let { n ->
+            assertEquals("no band without an ensemble, got ${n.size}", 0, n.size)
+        }
+    }
+
+    // ── The reference sheet ─────────────────────────────────────────────
+
+    @Test
+    fun the_reference_sheet_is_reachable() {
+        // It was implemented, unit-tested and called by nothing, while the
+        // screen said "set a sea-level reference to get one".
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                currentHpa = 1004.2f,
+                samples = samples(),
+                showingReference = true,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithText("Sea-level reference", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the sheet must open, got ${n.size}", n.isNotEmpty())
+            }
+        compose.onAllNodesWithText("IF YOU KNOW YOUR ALTITUDE").fetchSemanticsNodes().let { n ->
+            assertTrue("the altitude route must be offered", n.isNotEmpty())
+        }
+        compose.onAllNodesWithText("IF YOU HAVE A QNH").fetchSemanticsNodes().let { n ->
+            assertTrue("the QNH route must be offered", n.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun the_altitude_prompt_is_tappable_and_says_what_it_does() {
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                currentHpa = 1004.2f,
+                samples = samples(),
+                staleness = ReferenceStaleness.UNSET,
+                altitudeMetres = null,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithContentDescription("Tap to set one", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue(
+                    "the prompt must announce that it is tappable, got ${n.size}",
+                    n.isNotEmpty(),
+                )
+            }
+    }
+
+    @Test
+    fun a_stale_reference_offers_to_be_reset() {
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                currentHpa = 1004.2f,
+                samples = samples(),
+                staleness = ReferenceStaleness.STALE,
+                altitudeMetres = null,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithContentDescription("Tap to set it again", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("a stale reference must be resettable, got ${n.size}", n.isNotEmpty())
             }
     }
 

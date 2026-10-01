@@ -258,6 +258,21 @@ class MeasureViewModel(
         state = state.copy(showingMethod = false)
     }
 
+    fun openReference() {
+        state = state.copy(showingReference = true)
+    }
+
+    fun dismissReference() {
+        state = state.copy(showingReference = false)
+    }
+
+    /** Set the reference from a QNH the user supplied directly. */
+    fun calibrateFromQnh(qnhHpa: Float) {
+        reference = SeaLevel(qnhHpa, clock())
+        store.saveReference(reference!!)
+        recompute(online = onlineCheck())
+    }
+
     fun openAbout() {
         state = state.copy(showingAbout = true)
     }

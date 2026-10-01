@@ -98,6 +98,9 @@ data class MeasureState(
     /** The about sheet is open. */
     val showingAbout: Boolean = false,
 
+    /** The sea-level reference sheet is open. */
+    val showingReference: Boolean = false,
+
     /** The city search has never returned anything for this query. */
     val searchEmpty: Boolean = false,
 ) {

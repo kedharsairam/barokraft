@@ -95,6 +95,11 @@ fun MeasureContent(
     onDismissMethod: () -> Unit = {},
     onOpenAbout: () -> Unit = {},
     onDismissAbout: () -> Unit = {},
+    onOpenReference: () -> Unit = {},
+    onDismissReference: () -> Unit = {},
+    onCalibrateFromAltitude: (Float) -> Unit = {},
+    onCalibrateFromQnh: (Float) -> Unit = {},
+    onClearReference: () -> Unit = {},
     versionName: String = "0.1.0",
 ) {
     val forecast = state.forecast
@@ -181,7 +186,7 @@ fun MeasureContent(
             // worse than showing nothing, because a dash is a rendered
             // element claiming a measurement exists.
             if (state.capabilities.canShowPressure || state.capabilities.canShowNowcast) {
-                InstrumentPanel(state, onPage)
+                InstrumentPanel(state, onPage, onOpenReference)
             } else {
                 NoBarometerNote()
             }
@@ -195,6 +200,16 @@ fun MeasureContent(
         if (state.showingMethod) MethodSheet(onDismissMethod)
         if (state.showingAbout) {
             AboutSheet(versionName = versionName, onDismiss = onDismissAbout)
+        }
+
+        if (state.showingReference) {
+            ReferenceSheet(
+                state = state,
+                onCalibrateFromAltitude = onCalibrateFromAltitude,
+                onCalibrateFromQnh = onCalibrateFromQnh,
+                onClear = onClearReference,
+                onDismiss = onDismissReference,
+            )
         }
     }
 }
@@ -604,7 +619,11 @@ private fun rangeGradient(startFrac: Float, endFrac: Float) = androidx.compose.u
 )
 
 @Composable
-private fun InstrumentPanel(state: MeasureState, onPage: Color) {
+private fun InstrumentPanel(
+    state: MeasureState,
+    onPage: Color,
+    onOpenReference: () -> Unit,
+) {
     val hpa = state.currentHpa
     val tendency = tendencyHpaPerHour(state.samples)
     val trend = tendency?.let { classifyTendency(it) }
@@ -661,6 +680,41 @@ private fun InstrumentPanel(state: MeasureState, onPage: Color) {
             }
         }
 
+        // The nowcast band, which is the product. Drawn above the sample
+        // trace because it is an estimate about the future and the trace is a
+        // record of the past, and the reader should not have to work out
+        // which is which.
+        if (state.capabilities.canShowNowcast && state.nowcast.isNotEmpty() && hpa != null) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "NOWCAST",
+                style = label.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp),
+                color = TextMuted,
+            )
+            Spacer(Modifier.height(6.dp))
+            NowcastBand(
+                points = state.nowcast,
+                currentHpa = hpa,
+                horizonHours = com.krafttools.barokraft.core.HORIZON_HOURS,
+                tint = Accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(88.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = nowcastCaption(
+                            state.nowcast,
+                            com.krafttools.barokraft.core.HORIZON_HOURS,
+                        )
+                    },
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                nowcastCaption(state.nowcast, com.krafttools.barokraft.core.HORIZON_HOURS),
+                style = label.copy(fontSize = 10.sp, lineHeight = 14.sp),
+                color = TextMuted.copy(alpha = 0.85f),
+            )
+        }
+
         if (state.samples.size >= 4) {
             Spacer(Modifier.height(10.dp))
             PressureTrace(
@@ -696,19 +750,46 @@ private fun InstrumentPanel(state: MeasureState, onPage: Color) {
                 "${fmt1(state.altitudeMetres!!)} m",
                 caveat = if (state.staleness == ReferenceStaleness.AGING) "reference ageing" else null,
             )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Adjust reference",
+                style = label.copy(fontSize = 12.sp, color = Accent),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickableNoRipple(onOpenReference)
+                    .padding(vertical = 4.dp)
+                    .clearAndSetSemantics { contentDescription = "Adjust the sea-level reference" },
+            )
             Spacer(Modifier.height(4.dp))
         } else if (state.capabilities.canShowPressure) {
-            Text(
-                when (state.staleness) {
-                    ReferenceStaleness.STALE ->
-                        "No altitude — the sea-level reference is too old to trust."
-                    ReferenceStaleness.UNSET, ReferenceStaleness.FRESH,
-                    ReferenceStaleness.AGING ->
-                        "No altitude — set a sea-level reference to get one."
-                },
-                style = label.copy(fontSize = 12.sp),
-                color = TextMuted,
-            )
+            // Tappable, because this used to be an instruction the app
+            // offered no way to follow: "set a sea-level reference to get
+            // one" with no control that set one.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickableNoRipple(onOpenReference)
+                    .clearAndSetSemantics {
+                        contentDescription = when (state.staleness) {
+                            ReferenceStaleness.STALE ->
+                                "The sea-level reference is too old. Tap to set it again."
+                            else ->
+                                "No altitude, because no sea-level reference is set. Tap to set one."
+                        }
+                    }
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    when (state.staleness) {
+                        ReferenceStaleness.STALE ->
+                            "Reference too old — tap to set it again"
+                        else -> "Set a sea-level reference for altitude"
+                    },
+                    style = label.copy(fontSize = 12.sp, color = Accent),
+                )
+            }
         }
 
         Spacer(Modifier.height(6.dp))
@@ -744,7 +825,11 @@ private fun NoBarometerNote() {
                     style = label.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
                 )
                 Text(
-                    "The forecast below is everything this app can tell you here.",
+                    // "Above", not "below": this card sits *under* the
+                    // forecast, and a card pointing the wrong way is the
+                    // kind of small wrongness that costs trust in the
+                    // large ones.
+                    "The forecast above is everything this app can tell you here.",
                     style = label.copy(fontSize = 12.sp),
                     color = TextMuted,
                 )

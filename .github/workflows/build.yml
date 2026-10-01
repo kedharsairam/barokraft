@@ -1,0 +1,132 @@
+name: build
+
+# Two jobs: the pure logic needs no device and must stay fast, and the UI
+# needs a device or emulator and is the slower half.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A new push supersedes an in-flight run on the same ref. Saves minutes on
+  # a repository where a commit is usually followed quickly by its fix.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Unit tests
+        # No daemon: a CI machine starts cold and lives for one job, so the
+        # daemon is pure overhead and slows the next step down.
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 14
+
+  # The APK is uploaded on a tag so a release can attach the exact binary CI
+  # built, rather than one built on someone's machine.
+  assemble:
+    name: assemble
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build release and debug APKs
+        run: ./gradlew --no-daemon :app:assembleRelease :app:assembleDebug
+
+      - name: Check the release APK is really release-sized
+        # R8 stripping is what keeps this at ~1.3 MB rather than ~12 MB. A
+        # silent loss of minification would ship a needlessly large binary
+        # without failing anything, so it is checked rather than assumed.
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release.apk
+          size=$(stat -c%s "$apk")
+          echo "release APK: $size bytes"
+          if [ "$size" -gt 4000000 ]; then
+            echo "::error::release APK is $size bytes — shrinking is probably disabled"
+            exit 1
+          fi
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: app/build/outputs/apk/*/*.apk
+          retention-days: 30
+
+  instrumented:
+    name: instrumented tests
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Enable KVM
+        # Without this the emulator runs under software emulation and the
+        # instrumented suite takes far longer than it needs to.
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Instrumented tests on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
+
+      - name: Test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-reports
+          path: app/build/reports/androidTests/connected/
+          retention-days: 14
+
+      # Six tests hit the live Open-Meteo API on purpose, so this job can fail
+      # for reasons that have nothing to do with a commit. Recorded rather than
+      # hidden, because a permanently red badge is worse than a noted one.
+      - name: Note that some tests need the network
+        if: failure()
+        run: echo "::warning::EdgeContractTest hits the live Open-Meteo API; a network failure will fail this job"

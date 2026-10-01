@@ -1,6 +1,7 @@
 package com.krafttools.barokraft.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertFalse
@@ -308,6 +309,70 @@ class VerdictTest {
         assertTrue("the horizon should read as whole hours: $text", text.contains("6 hours"))
     }
 
+    // ── A phone with no barometer ───────────────────────────────────────
+
+    @Test
+    fun `a phone with no barometer never claims to be reading one`() {
+        // Found on a Realme with no pressure sensor, which printed:
+        //     Reading the barometer
+        //     no sea-level reference set, so no altitude · no barometer on
+        //     this device, so no local nowcast
+        // The app describing its own hardware in two sentences that
+        // contradict each other.
+        val v = verdict(
+            VerdictInput(
+                state = SourceState.NETWORK_ONLY,
+                nowMillis = 1_800_000_000_000L,
+                currentHpa = null,
+                tendencyHpaPerHour = null,
+            ),
+        )
+        assertEquals(
+            "no announcement of a reading that cannot happen",
+            "Nothing notable", v.headline,
+        )
+        assertNull(
+            "and nothing about a sensor that is not there: ${v.detail}",
+            v.detail,
+        )
+    }
+
+    @Test
+    fun `the quiet detail never mentions altitude or a reference without a sensor`() {
+        val v = verdict(
+            VerdictInput(
+                state = SourceState.NETWORK_ONLY,
+                nowMillis = 1_800_000_000_000L,
+                staleness = ReferenceStaleness.UNSET,
+            ),
+        )
+        val spoken = v.headline + " " + (v.detail ?: "")
+        for (word in listOf("barometer", "altitude", "sea-level", "hPa", "nowcast")) {
+            assertTrue(
+                "\"$word\" must not appear on a device with no sensor: $spoken",
+                !spoken.lowercase().contains(word),
+            )
+        }
+    }
+
+    @Test
+    fun `a device with a barometer still announces reading it`() {
+        // The guard above must not silence the case it was written for.
+        val v = verdict(
+            VerdictInput(
+                state = SourceState.BAROMETER_ONLY,
+                nowMillis = 1_800_000_000_000L,
+                currentHpa = 1009.1f,
+                tendencyHpaPerHour = null,
+            ),
+        )
+        assertEquals("Reading the barometer", v.headline)
+        assertTrue(
+            "the reading should be stated: ${v.detail}",
+            (v.detail ?: "").contains("1009.1"),
+        )
+    }
+
     // ── 6. Quiet ────────────────────────────────────────────────────────
 
     @Test
@@ -318,8 +383,21 @@ class VerdictTest {
 
     @Test
     fun `a network-only phone admits it has no barometer`() {
+        // This used to assert `detail.contains("no barometer")`, which
+        // pinned the app to announcing a reading and then denying it in the
+        // same sentence. The admission belongs to the screen — there is a
+        // whole card saying so — and the verdict's job is to say nothing at
+        // all about hardware it cannot read. The screen side is asserted by
+        // the instrumented test `a_network_only_phone_is_told_why_the_panel_is_missing`.
         val v = verdict(VerdictInput(SourceState.NETWORK_ONLY, now))
-        assertTrue(v.detail!!.contains("no barometer"))
+        assertTrue(
+            "no claim to be reading a barometer: ${v.headline}",
+            !v.headline.contains("Reading", ignoreCase = true),
+        )
+        assertNull(
+            "and nothing at all about a sensor that is absent",
+            v.detail,
+        )
     }
 
     @Test

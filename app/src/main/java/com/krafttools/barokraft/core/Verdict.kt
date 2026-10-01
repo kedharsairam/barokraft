@@ -186,6 +186,14 @@ private fun steadyOrNowcast(input: VerdictInput): Verdict {
 }
 
 private fun quietHeadline(input: VerdictInput): String {
+    val capabilities = Capabilities.of(input.state)
+    // No barometer means nothing here is a measurement, so do not announce
+    // a reading. Found on a Realme with no pressure sensor, where the
+    // verdict said "Reading the barometer / no barometer on this device" in
+    // consecutive lines — the app describing its own hardware in two
+    // sentences that contradict each other.
+    if (!capabilities.canShowPressure) return "Nothing notable"
+
     val tendency = input.tendencyHpaPerHour
     return if (tendency == null) {
         "Reading the barometer"
@@ -196,15 +204,18 @@ private fun quietHeadline(input: VerdictInput): String {
 }
 
 private fun quietDetail(input: VerdictInput): String? {
+    val capabilities = Capabilities.of(input.state)
+    // Nothing to say about a sensor that is not there. Every clause below
+    // describes a measurement, a calibration or an altitude, and all three
+    // are meaningless without one.
+    if (!capabilities.canShowPressure) return null
+
     val parts = mutableListOf<String>()
     input.currentHpa?.let { parts += "${fmt1(it)} hPa" }
     when (input.staleness) {
         ReferenceStaleness.AGING -> parts += "sea-level reference is ageing, so altitude may drift"
         ReferenceStaleness.UNSET -> parts += "no sea-level reference set, so no altitude"
         else -> Unit
-    }
-    if (input.state == SourceState.NETWORK_ONLY) {
-        parts += "no barometer on this device, so no local nowcast"
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }

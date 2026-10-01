@@ -76,6 +76,11 @@ class MainActivity : ComponentActivity() {
                     onDismissMethod = viewModel::dismissMethod,
                     onOpenAbout = viewModel::openAbout,
                     onDismissAbout = viewModel::dismissAbout,
+                    onOpenReference = viewModel::openReference,
+                    onDismissReference = viewModel::dismissReference,
+                    onCalibrateFromAltitude = { viewModel.calibrateFromAltitude(it) },
+                    onCalibrateFromQnh = viewModel::calibrateFromQnh,
+                    onClearReference = viewModel::clearReference,
                     versionName = BuildConfig.VERSION_NAME,
                 )
                 if (state.pickingPlace) {
