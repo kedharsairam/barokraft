@@ -174,6 +174,24 @@ object About {
         if (HORIZON_HOURS % 1f == 0f) HORIZON_HOURS.toInt().toString()
         else HORIZON_HOURS.toString()
 
+    /**
+     * The support link.
+     *
+     * ## Why it lives in the app and not only the repository
+     *
+     * The README carries this link and always has, but a user reads the app
+     * and never sees the repository. Two of the sibling apps put it in an
+     * in-app settings section for exactly that reason; this is the same
+     * argument applied to the disclosure sheet, which is the one place a
+     * reader goes looking for who made something.
+     */
+    const val SUPPORT_HEADING = "Support"
+    const val SUPPORT_NOTE =
+        "This app is free, has no ads and no analytics, and costs nothing " +
+            "to run. If it is useful to you, a coffee is the whole business " +
+            "model."
+    const val SUPPORT_URL = "https://buymeacoffee.com/kedhartech"
+
     const val LICENCE =
         "Open source under the MIT licence. The source is public, the " +
             "issue tracker is public, and there is no analytics, no " +

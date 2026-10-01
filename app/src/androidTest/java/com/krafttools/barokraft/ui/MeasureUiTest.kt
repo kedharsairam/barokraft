@@ -4,8 +4,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.performClick
 import androidx.compose.runtime.mutableStateOf
 import com.krafttools.barokraft.core.PressureSample
@@ -511,6 +514,17 @@ class MeasureUiTest {
     // ── The about sheet ─────────────────────────────────────────────────
 
     @Test
+    fun the_about_sheet_carries_the_support_link() {
+        // The README has one and always has. A reader in the disclosure
+        // sheet has never seen the repository.
+        show(MeasureState(sourceState = SourceState.BOTH, showingAbout = true).withVerdict())
+        compose.onAllNodesWithContentDescription("Buy me a coffee", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("expected the support link, got ${n.size}", n.isNotEmpty())
+            }
+    }
+
+    @Test
     fun the_about_sheet_carries_the_required_attribution() {
         // CC BY 4.0 requires attribution and the user reads the app, not
         // the repository, so it has to be on screen here.
@@ -704,6 +718,149 @@ class MeasureUiTest {
             .fetchSemanticsNodes().let { n ->
                 assertTrue("a stale reference must be resettable, got ${n.size}", n.isNotEmpty())
             }
+    }
+
+    // ── The controls are actually controls ──────────────────────────────
+
+    /**
+     * Why this file exists.
+     *
+     * Every other test here sets `showingAbout`, `showingReference` and the
+     * rest directly on the state record, so the whole suite passed while the
+     * buttons that set those flags did nothing. On a real device the Method,
+     * About, Read-pressure, Adjust-reference and Forget-reference controls
+     * all had `clickable="false"` in the view hierarchy — visible, described,
+     * and inert.
+     *
+     * The cause is a modifier-order mistake that produces no compiler error
+     * and no test failure: `clearAndSetSemantics` clears the semantics of
+     * every modifier applied *after* it, so `.clearAndSetSemantics { }
+     * .clickable { }` erases the click action. Each test below taps.
+     */
+    @Test
+    fun the_about_button_opens_the_about_sheet() {
+        var opened = false
+        compose.setContent {
+            MeasureContent(
+                state = MeasureState(sourceState = SourceState.BOTH, currentHpa = 1004.2f),
+                nowMillis = now,
+                onOpenAbout = { opened = true },
+            )
+        }
+        compose.onAllNodesWithContentDescription("About this app", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the About control must exist, got ${n.size}", n.isNotEmpty())
+            }
+        compose.onAllNodesWithContentDescription("About this app", substring = true)[0]
+            .performClick()
+        assertTrue("tapping About must fire its callback", opened)
+    }
+
+    @Test
+    fun the_method_button_opens_the_method_sheet() {
+        var opened = false
+        compose.setContent {
+            MeasureContent(
+                state = MeasureState(sourceState = SourceState.BOTH, currentHpa = 1004.2f),
+                nowMillis = now,
+                onOpenMethod = { opened = true },
+            )
+        }
+        compose.onAllNodesWithContentDescription("How this app measures", substring = true)[0]
+            .performClick()
+        assertTrue("tapping Method must fire its callback", opened)
+    }
+
+    @Test
+    fun the_read_pressure_button_fires() {
+        var toggled = false
+        compose.setContent {
+            MeasureContent(
+                state = MeasureState(
+                    sourceState = SourceState.BOTH,
+                    currentHpa = 1004.2f,
+                    samples = samples(),
+                ),
+                nowMillis = now,
+                onToggleSampling = { toggled = true },
+            )
+        }
+        compose.onAllNodesWithContentDescription("Start reading the barometer")[0]
+            .performClick()
+        assertTrue("tapping Read pressure must fire its callback", toggled)
+    }
+
+    @Test
+    fun the_support_link_carries_a_click_action() {
+        // `assertHasClickAction` is the precise statement of the bug: the
+        // control was present and described and inert, so a presence
+        // assertion passed while `clickable="false"` sat in the hierarchy.
+        compose.setContent {
+            AboutSheet(versionName = "0.3.0", onDismiss = {})
+        }
+        compose.onAllNodesWithContentDescription("Buy me a coffee", substring = true)[0]
+            .assertHasClickAction()
+    }
+
+    @Test
+    fun the_main_screen_controls_all_carry_a_click_action() {
+        compose.setContent {
+            MeasureContent(
+                state = MeasureState(
+                    sourceState = SourceState.BOTH,
+                    currentHpa = 1004.2f,
+                    samples = samples(),
+                ),
+                nowMillis = now,
+            )
+        }
+        // Each control in the state the screen is actually in when it is
+        // visible. Asserting a control that is not on screen would pass for
+        // the wrong reason, which is how the first version of this test
+        // spent its time looking for a link that belonged to a sheet which
+        // was not open.
+        for (label in listOf(
+            "About this app",
+            "How this app measures",
+            "Start reading the barometer",
+        )) {
+            assertClickable(label)
+        }
+    }
+
+    @Test
+    fun the_about_sheet_controls_all_carry_a_click_action() {
+        compose.setContent { AboutSheet(versionName = "0.3.0", onDismiss = {}) }
+        assertClickable("Buy me a coffee")
+    }
+
+    @Test
+    fun the_reference_sheet_controls_all_carry_a_click_action() {
+        compose.setContent {
+            ReferenceSheet(
+                state = MeasureState(
+                    sourceState = SourceState.BOTH,
+                    currentHpa = 1004.2f,
+                    reference = com.krafttools.barokraft.core.SeaLevel(1013.2f, 1_800_000_000_000L),
+                    showingReference = true,
+                ),
+                onCalibrateFromAltitude = {},
+                onCalibrateFromQnh = {},
+                onClear = {},
+                onDismiss = {},
+            )
+        }
+        assertClickable("Forget the sea-level reference")
+    }
+
+    /** Fail with the label, so a regression names the control that broke. */
+    private fun assertClickable(label: String) {
+        val node = compose.onAllNodesWithContentDescription(label, substring = true)[0]
+        try {
+            node.assertHasClickAction()
+        } catch (e: AssertionError) {
+            throw AssertionError("the control described as \"$label\" has no click action", e)
+        }
     }
 
     // ── Accessibility ───────────────────────────────────────────────────

@@ -107,6 +107,31 @@ class AboutTest {
     }
 
     @Test
+    fun `the support link is in the app and points at the right place`() {
+        // The README has always carried this. The app needs it too, because
+        // a reader is already in the disclosure sheet and has never seen the
+        // repository — the same argument WallKraft and GitAKraft apply in
+        // their settings sections.
+        assertEquals("https://buymeacoffee.com/kedhartech", About.SUPPORT_URL)
+        assertTrue(
+            "the note should say what the app does not do",
+            About.SUPPORT_NOTE.contains("no ads") && About.SUPPORT_NOTE.contains("no analytics"),
+        )
+    }
+
+    @Test
+    fun `the README and the app name the same support page`() {
+        // Two copies of one URL is one thing to forget to update.
+        val readme = java.io.File("README.md").takeIf { it.exists() }?.readText()
+        if (readme != null) {
+            assertTrue(
+                "README and About disagree about the support link",
+                readme.contains(About.SUPPORT_URL),
+            )
+        }
+    }
+
+    @Test
     fun `the licence is named`() {
         assertTrue(About.LICENCE.contains("MIT"))
     }
@@ -143,6 +168,7 @@ class AboutTest {
             About.NO_BAROMETER,
             About.WILL_NOT_SUMMARY,
             About.LICENCE,
+            About.SUPPORT_NOTE,
         )
         val banned = listOf("most accurate", "better than", "beat", "exactly", "precise")
         for (sentence in published) {

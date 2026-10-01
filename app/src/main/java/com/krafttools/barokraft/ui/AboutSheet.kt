@@ -12,11 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.material3.Text
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -138,6 +143,11 @@ fun AboutSheet(
 
             Section("Open source", About.LICENCE)
 
+            // The support link. In the app, not only the repository, because
+            // a reader is already here and has never seen the README.
+            Spacer(Modifier.height(Gap))
+            SupportBlock()
+
             Spacer(Modifier.height(Gap))
         }
 
@@ -156,6 +166,60 @@ fun AboutSheet(
                 .clickableNoRipple(onDismiss),
         )
     }
+}
+
+/**
+ * The support link.
+ *
+ * Opens the page in whatever the device treats as a browser. No in-app web
+ * view: this app has no WebView dependency and adding one to render a
+ * donation page would be a poor trade.
+ */
+@Composable
+private fun SupportBlock() {
+    val context = LocalContext.current
+    Text(
+        About.SUPPORT_HEADING,
+        style = label.copy(
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+        ),
+        color = TextPrimary,
+        modifier = Modifier.semantics { heading() },
+    )
+    Spacer(Modifier.height(4.dp))
+    Text(
+        About.SUPPORT_NOTE,
+        style = label.copy(fontSize = 12.sp, lineHeight = 17.sp),
+        color = TextSecondary,
+    )
+    Spacer(Modifier.height(10.dp))
+    Text(
+        "Buy me a coffee",
+        style = label.copy(fontSize = 14.sp),
+        color = Accent,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface2)
+            .padding(vertical = 13.dp)
+            // Clickable first, then the description. The order matters and
+            // the wrong order is silent: `semantics` clears the
+            // semantics of every modifier applied *after* it, so putting the
+            // clear first erases the click action and leaves a button that
+            // looks live and does nothing. Caught by dumping the real view
+            // hierarchy on a device, where `clickable="false"` on a visible
+            // control is the only symptom.
+            .clickableNoRipple {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(About.SUPPORT_URL))
+                runCatching { context.startActivity(intent) }
+            }
+            .semantics {
+                contentDescription =
+                    "Buy me a coffee. Opens " + About.SUPPORT_URL + " in a browser."
+            },
+    )
 }
 
 @Composable

@@ -222,11 +222,13 @@ fun ReferenceSheet(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Surface2)
                     .padding(vertical = 13.dp)
-                    .clearAndSetSemantics { contentDescription = "Forget the sea-level reference" }
+                    // Clickable before the description — see the note in
+                    // AboutSheet.kt for why the other order is silent.
                     .clickableNoRipple {
                         onClear()
                         onDismiss()
-                    },
+                    }
+                    .semantics { contentDescription = "Forget the sea-level reference" },
             )
         }
 
@@ -398,8 +400,8 @@ private fun Action(text: String, enabled: Boolean, onClick: () -> Unit) {
             .clip(RoundedCornerShape(12.dp))
             .background(if (enabled) Surface2 else Surface1.copy(alpha = 0.5f))
             .padding(vertical = 13.dp)
-            .clearAndSetSemantics { contentDescription = text }
-            .clickableNoRipple(if (enabled) onClick else ({ /* disabled */ })),
+            .clickableNoRipple(if (enabled) onClick else ({ /* disabled */ }))
+            .semantics { contentDescription = text },
     )
 }
 

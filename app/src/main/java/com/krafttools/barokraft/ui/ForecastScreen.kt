@@ -758,7 +758,7 @@ private fun InstrumentPanel(
                     .clip(RoundedCornerShape(8.dp))
                     .clickableNoRipple(onOpenReference)
                     .padding(vertical = 4.dp)
-                    .clearAndSetSemantics { contentDescription = "Adjust the sea-level reference" },
+                    .semantics { contentDescription = "Adjust the sea-level reference" },
             )
             Spacer(Modifier.height(4.dp))
         } else if (state.capabilities.canShowPressure) {
@@ -770,7 +770,7 @@ private fun InstrumentPanel(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
                     .clickableNoRipple(onOpenReference)
-                    .clearAndSetSemantics {
+                    .semantics {
                         contentDescription = when (state.staleness) {
                             ReferenceStaleness.STALE ->
                                 "The sea-level reference is too old. Tap to set it again."
@@ -965,7 +965,7 @@ private fun Pill(
             .background(Surface1.copy(alpha = 0.72f))
             .border(1.dp, Hairline.copy(alpha = 0.6f), RoundedCornerShape(11.dp))
             .padding(vertical = 12.dp)
-            .clearAndSetSemantics { contentDescription = description }
-            .clickableNoRipple(onClick),
+            .clickableNoRipple(onClick)
+            .semantics { contentDescription = description },
     )
 }
