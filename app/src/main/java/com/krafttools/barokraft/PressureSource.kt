@@ -48,18 +48,55 @@ class PressureSource(
     context: Context,
     /** Injected so a test can decide what time it is. */
     private val clock: () -> Long = System::currentTimeMillis,
+    private val sensorOverride: Sensor? = null,
+    /**
+     * Forces [isAvailable] without a `Sensor` instance.
+     *
+     * `Sensor` is a final framework class with no public constructor, so a
+     * test cannot build one — and the decision this drives is not a detail:
+     * it chooses between the two largest code paths in the app, because a
+     * phone with no barometer is *normal* hardware rather than a broken
+     * one. An earlier attempt at this reached for reflection to set the
+     * private `mType` field, which is a fragile thing to depend on a
+     * platform class for and buys nothing: the ViewModel asks whether a
+     * barometer exists, never what type it is.
+     */
+    private val availableOverride: Boolean? = null,
 ) : SensorEventListener {
 
-    private companion object {
+    companion object {
+        /**
+         * A source for a device with no barometer.
+         *
+         * The seam that lets the ViewModel be built without a handset.
+         * Without it, the state this app's design most exists to handle —
+         * a phone that simply has no pressure sensor — could only be
+         * reached on a device that happens to lack one.
+         */
+        fun absent(
+            context: Context,
+            clock: () -> Long = System::currentTimeMillis,
+        ): PressureSource = PressureSource(context, clock, availableOverride = false)
+
+        /**
+         * A source that reports a barometer but never delivers an event.
+         *
+         * Readings arrive through `inject` rather than a ten-minute timer,
+         * so a test drives the whole derivation chain without waiting.
+         */
+        fun present(
+            context: Context,
+            clock: () -> Long = System::currentTimeMillis,
+        ): PressureSource = PressureSource(context, clock, availableOverride = true)
+
         const val TAG = "PressureSource"
 
         /**
          * 10 minutes, in microseconds.
          *
-         * An `Int`, because `registerListener` takes an `int samplingPeriodUs`
-         * and there is no `Long` overload. 600,000,000 fits comfortably —
-         * the largest value here is 1/2^31 of the range — so the narrower
-         * type costs nothing and the alternative is a cast at every call.
+         * An `Int`, because `registerListener` takes an `int
+         * samplingPeriodUs` and there is no `Long` overload. 600,000,000
+         * fits comfortably, so the narrower type costs nothing.
          */
         const val SAMPLING_PERIOD_US = 10 * 60 * 1_000_000
 
@@ -75,15 +112,27 @@ class PressureSource(
         const val MAX_SAMPLES = 36
     }
 
-    private val sensorManager =
-        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val _samples = mutableListOf<PressureSample>()
 
-    private val sensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
+    /** Set by a test to push a reading, exactly as the sensor would. */
+    internal fun inject(hpa: Float, atMillis: Long = clock()) {
+        _samples += PressureSample(atMillis, hpa)
+        while (_samples.size > MAX_SAMPLES) _samples.removeAt(0)
+        latestHpa = hpa
+    }
+
+    // Guarded because a Context is allowed to have no system services at
+    // all, and this must not be the thing that crashes a device.
+    private val sensorManager: SensorManager? = runCatching {
+        context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+    }.getOrNull()
+
+    private val sensor: Sensor? = sensorOverride ?: runCatching {
+        sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE)
+    }.getOrNull()
 
     /** True when this device has a pressure sensor at all. */
-    val isAvailable: Boolean get() = sensor != null
-
-    private val _samples = mutableListOf<PressureSample>()
+    val isAvailable: Boolean get() = availableOverride ?: (sensor != null)
 
     /** The history, oldest first. A copy, so callers cannot mutate it. */
     val samples: List<PressureSample> get() = _samples.toList()
@@ -113,7 +162,8 @@ class PressureSource(
             return
         }
         if (isSampling) return
-        val registered = sensorManager.registerListener(
+        val manager = sensorManager ?: return
+        val registered = manager.registerListener(
             this,
             s,
             SAMPLING_PERIOD_US,
@@ -129,7 +179,7 @@ class PressureSource(
 
     fun stop() {
         if (!isSampling) return
-        sensorManager.unregisterListener(this)
+        sensorManager?.unregisterListener(this)
         isSampling = false
         Log.i(TAG, "stopped sampling")
     }

@@ -99,6 +99,12 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
 
     testImplementation("junit:junit:4.13.2")
+    // A real Application for the ViewModel tests. Robolectric is not used
+    // and no android.jar is stubbed in: the ViewModel takes an
+    // Application and a Context, and the test needs those to be real
+    // objects rather than nulls that throw for the wrong reason.
+    testImplementation("androidx.test:core:1.7.0")
+    testImplementation("org.robolectric:robolectric:4.16")
 
     androidTestImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")

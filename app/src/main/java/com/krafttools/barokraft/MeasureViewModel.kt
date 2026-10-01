@@ -59,6 +59,17 @@ class MeasureViewModel(
     ),
     private val store: PlaceStore = PlaceStore(application),
     private val clock: () -> Long = System::currentTimeMillis,
+    /**
+     * Injected so a test can decide what "online" means.
+     *
+     * Found by a test: `init` called the free [isOnline] function, which
+     * asks the real `ConnectivityManager`, so every state derived during
+     * construction came from whatever network the machine running the
+     * tests happened to have. The `NETWORK_ONLY` case — the state this
+     * app's design most exists to handle, a phone with no barometer — was
+     * unreachable in a test for exactly that reason.
+     */
+    private val onlineCheck: () -> Boolean = { isOnline(application) },
 ) : AndroidViewModel(application) {
 
     /** The one piece of state the UI reads. */
@@ -72,7 +83,7 @@ class MeasureViewModel(
     init {
         val saved = store.loadPlace()
         reference = store.loadReference()
-        recompute(online = isOnline(getApplication()))
+        recompute(online = onlineCheck())
         if (saved != null) {
             state = state.copy(place = saved)
             refresh()
@@ -87,7 +98,7 @@ class MeasureViewModel(
         } else if (pressureSource.isAvailable) {
             pressureSource.start()
         }
-        recompute(online = isOnline(getApplication()))
+        recompute(online = onlineCheck())
     }
 
     /**
@@ -131,11 +142,40 @@ class MeasureViewModel(
         }
     }
 
+    /**
+     * Install a forecast as though one had been fetched or restored from
+     * cache, then recompute. Test-only.
+     *
+     * The divergence audit is this app's differentiator and the one path
+     * that needs both sources at once, so it is the one most worth having a
+     * test for — and it needs a seam because a cached forecast only ever
+     * arrives from the network in production.
+     */
+    internal fun injectForecast(
+        forecast: Protocol.Forecast,
+        atMillis: Long = clock(),
+        online: Boolean,
+    ) {
+        cachedForecast = forecast
+        lastFetchedMillis = atMillis
+        state = state.copy(forecast = forecast, forecastAtMillis = atMillis)
+        recompute(online)
+    }
+
+    /**
+     * Push a reading as though the sensor had delivered it, then
+     * recompute. Test-only: the real path is the sensor's own callback.
+     */
+    internal fun injectReading(hpa: Float, online: Boolean) {
+        pressureSource.inject(hpa, clock())
+        recompute(online)
+    }
+
     /** Stop sampling without toggling, for the lifecycle's `onStop`. */
     fun toggleSamplingIfRunning() {
         if (state.sampling) {
             pressureSource.stop()
-            recompute(online = isOnline(getApplication()))
+            recompute(online = onlineCheck())
         }
     }
 
@@ -214,21 +254,21 @@ class MeasureViewModel(
         val ref = SeaLevel(seaLevel, clock())
         reference = ref
         store.saveReference(ref)
-        recompute(online = isOnline(getApplication()))
+        recompute(online = onlineCheck())
     }
 
     fun clearReference() {
         reference = null
         store.clearReference()
-        recompute(online = isOnline(getApplication()))
+        recompute(online = onlineCheck())
     }
 
     // ── Fetching ────────────────────────────────────────────────────────
 
     fun refresh(force: Boolean = false) {
-        val online = isOnline(getApplication())
+        val onlineNow = onlineCheck()
         val now = clock()
-        if (!force && !Policy.shouldFetch(online, lastFetchedMillis, now)) {
+        if (!force && !Policy.shouldFetch(onlineNow, lastFetchedMillis, now)) {
             // Not a failure. Policy is refusing to spend the user's data
             // for a forecast that is three minutes old, and the screen
             // says "fetched 3 minutes ago" rather than showing an error.
@@ -254,7 +294,7 @@ class MeasureViewModel(
                         fetching = false,
                         failure = null,
                     )
-                    recompute(online)
+                    recompute(onlineNow)
                 }
                 is NetResult.Failed -> {
                     state = state.copy(
@@ -266,7 +306,7 @@ class MeasureViewModel(
                         forecast = cachedForecast,
                         forecastAtMillis = lastFetchedMillis,
                     )
-                    recompute(online)
+                    recompute(onlineNow)
                 }
             }
         }
@@ -274,7 +314,14 @@ class MeasureViewModel(
 
     // ── Deriving the state ──────────────────────────────────────────────
 
-    private fun recompute(online: Boolean) {
+    /**
+     * Recompute every derived value from what is currently known.
+     *
+     * `internal` rather than private so a test can force a recompute after
+     * pushing a reading into an injected sensor, without going through the
+     * sensor's 10-minute timer.
+     */
+    internal fun recompute(online: Boolean) {
         val now = clock()
         val hasBarometer = pressureSource.isAvailable
         val samples: List<PressureSample> = pressureSource.samples
@@ -286,19 +333,32 @@ class MeasureViewModel(
             ?.takeIf { Policy.mayShowAltitude(staleness) }
             ?.let { altitudeFromPressure(pressureSource.latestHpa ?: 0f, it.hpa) }
 
-        // The drift audit. Only ever computed with two sources and a
-        // reference good enough for the comparison to mean anything —
-        // auditing with a stale reference would "discover" its own error.
+        // The drift audit.
+        //
+        // The reference *is* this app's claim about local sea-level
+        // pressure, and the model supplies an independent claim about the
+        // same quantity. The drift is the distance between them.
+        //
+        // An earlier version derived an altitude from the reference, fed
+        // that altitude back through `seaLevelFromAltitude`, and compared
+        // the result with the model. That is a round trip: the function
+        // returns the reference exactly, so the drift was always 0.0 by
+        // construction and the audit could not detect anything — a check
+        // that cannot fail is worse than no check, because it reads as
+        // reassurance. Two tests caught it, one expecting agreement and
+        // one expecting a real disagreement.
+        //
+        // The barometer reading does not enter the audit, which is
+        // counter-intuitive and correct: the reference was set from a
+        // reading at some past time, and the question is whether the
+        // weather has moved underneath it. Adding today's reading back in
+        // would compare the reference against a value derived from itself.
         val drift = if (
             Policy.mayCompareSources(sourceState(hasBarometer, online), staleness)
         ) {
-            val local = reference?.let {
-                pressureSource.latestHpa?.let { p ->
-                    com.krafttools.barokraft.core.seaLevelFromAltitude(p, altitude ?: 0f)
-                }
-            }
+            val claimed = reference?.hpa
             val model = cachedForecast?.hourAt(now)?.seaLevelPressureHpa
-            if (local != null && model != null) referenceDrift(local, model) else null
+            if (claimed != null && model != null) referenceDrift(claimed, model) else null
         } else {
             null
         }
