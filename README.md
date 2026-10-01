@@ -113,7 +113,7 @@ Requires JDK 17. Everything else the build fetches.
 
 ```bash
 ./gradlew :app:assembleDebug        # debug APK
-./gradlew :app:testDebugUnitTest    # 224 unit tests
+./gradlew :app:testDebugUnitTest    # 228 unit tests
 ./gradlew :app:assembleRelease      # release APK, debug-signed
 ```
 
@@ -122,14 +122,14 @@ release keystore to leak, and GitHub releases do not need one.
 
 ## Tests
 
-**224 unit tests and 26 instrumented tests, all passing.**
+**228 unit tests and 26 instrumented tests, all passing.**
 
 | Suite | Tests | What it holds |
 | --- | --- | --- |
 | `ProtocolTest` | 23 | Request construction, response pairing |
 | `MeasureViewModelTest` | 26 | The whole state machine, and the factory that crashed |
 | `MethodTest` | 22 | Every published sentence, tied to its arithmetic |
-| `VerdictTest` | 21 | The six-branch precedence |
+| `VerdictTest` | 25 | The six-branch precedence |
 | `NowcastTest` | 20 | The ensemble |
 | `JsonTest` | 20 | Absent versus zero, and Float precision |
 | `AboutTest` | 17 | The About sheet cannot contradict the code |
@@ -205,6 +205,14 @@ applied to a raw UTC timestamp, and on a half-hour offset every row read
 **Dawn happened at 3 a.m.** The twilight check ORed two "is it near either
 edge" tests, so any time before sunrise also satisfied "within an hour of
 sunset".
+
+**An absurd forecast claim.** A freshly launched app read *"About 976.3 hPa
+higher in 6.0.toInt() hours"*. Two defects in one line: the nowcast gated on
+a reading *count* rather than a *duration*, so eight readings spanning two
+minutes passed it and a quadratic was extrapolated six hours from sensor
+noise — with a ±1.6 hPa band, so the absurdity was stated confidently. And
+`$HORIZON_HOURS.toInt()` in a string template substitutes the value and then
+appends `.toInt()` as literal text; Kotlin needs braces for a call.
 
 **A missing rain probability rendered as 0%.** The API returns `null` for
 every model without an ensemble. Treating that as zero produces "0% chance
