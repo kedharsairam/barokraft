@@ -89,6 +89,7 @@ jobs:
     name: instrumented tests
     runs-on: ubuntu-latest
     needs: unit
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -114,21 +115,19 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          # A GitHub runner has 7 GB for the whole VM. The default emulator
-          # heap plus a Gradle daemon plus the instrumentation process is
-          # close enough to the limit that the emulator was killed partway
-          # through the run, taking 15 of 32 tests with it. More memory for
-          # the device and less for Gradle's heap is the combination that
-          # fits.
-          ram-size: 4096M
-          heap-size: 2048M
-          emulator-options: >-
-            -no-window -gpu swiftshader_indirect -no-snapshot -noaudio
-            -no-boot-anim -camera-back none -camera-front none
-          script: >-
-            ./gradlew --no-daemon :app:connectedDebugAndroidTest
-            -Dorg.gradle.jvmargs="-Xmx2g"
-            --max-workers=2
+          # Deliberately the action's defaults for memory and graphics.
+          #
+          # An earlier version of this file raised the device heap to 4 GB,
+          # capped Gradle at 2 GB and pinned `-gpu swiftshader_indirect` on
+          # the reasoning that a 7 GB runner is tight. It made things worse:
+          # the emulator then died during *boot* and six tests ran instead of
+          # seventeen, because `swiftshader_indirect` is deprecated on
+          # current emulator builds and the extra RAM left the VM with no
+          # headroom for the image.
+          #
+          # `timeout-minutes` is the part worth keeping: a hung emulator
+          # should burn ten minutes, not the job's whole allowance.
+          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
 
       - name: Test report
         if: always()
