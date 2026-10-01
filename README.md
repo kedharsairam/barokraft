@@ -123,7 +123,7 @@ Requires JDK 17. Everything else the build fetches.
 
 ```bash
 ./gradlew :app:assembleDebug        # debug APK
-./gradlew :app:testDebugUnitTest    # 241 unit tests
+./gradlew :app:testDebugUnitTest    # 243 unit tests
 ./gradlew :app:assembleRelease      # release APK, debug-signed
 ```
 
@@ -132,7 +132,7 @@ release keystore to leak, and GitHub releases do not need one.
 
 ## Tests
 
-**241 unit tests and 32 instrumented tests, all passing.**
+**243 unit tests and 40 instrumented tests, all passing.**
 
 | Suite | Tests | What it holds |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ release keystore to leak, and GitHub releases do not need one.
 | `VerdictTest` | 28 | The six-branch precedence |
 | `NowcastTest` | 20 | The ensemble |
 | `JsonTest` | 20 | Absent versus zero, and Float precision |
-| `AboutTest` | 17 | The About sheet cannot contradict the code |
+| `AboutTest` | 19 | The About sheet cannot contradict the code |
 | `BaroTest` | 17 | Tendency, altitude, the plot scale |
 | `PolicyTest` | 15 | Which source may be shown at all |
 | `SeaLevelTest` | 14 | Reference staleness and drift |
