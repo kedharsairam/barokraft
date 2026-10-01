@@ -76,3 +76,15 @@ val Critical = Color(0xFFE86A6A)
 
 /** The confidence band fill. Low alpha so the trace stays readable through it. */
 val BandFill = Color(0x338B7BF7)
+
+/**
+ * Rain probability, when it is high enough to matter.
+ *
+ * Blue rather than the accent violet, so it reads as *water* rather than as
+ * app chrome and is distinct from the pressure accents on the same screen.
+ */
+val WaterBlue = Color(0xFF5FB0F5)
+
+/** The two ends of a daily temperature range bar. */
+val Cool = Color(0xFF6BA8FF)
+val Warm = Color(0xFFFFB067)

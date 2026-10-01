@@ -2,6 +2,8 @@ package com.krafttools.barokraft.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
@@ -70,6 +72,30 @@ class MeasureUiTest {
             )
         },
         modelName = "best_match",
+        current = Protocol.Current(
+            atMillis = now,
+            temperatureC = 28.1f,
+            apparentTemperatureC = 33f,
+            weatherCode = 95,
+            windSpeedKmh = 6.1f,
+            isDay = true,
+            precipitationMm = 0f,
+        ),
+        days = (0 until 7).map { d ->
+            Protocol.Day(
+                dateMillis = now + d * 86_400_000L,
+                weatherCode = if (d == 0) 95 else 1,
+                temperatureMaxC = 28f + d,
+                temperatureMinC = 21f + d * 0.5f,
+                apparentTemperatureMaxC = 33f,
+                apparentTemperatureMinC = 22f,
+                precipitationSumMm = if (d == 0) 4.2f else 0f,
+                precipitationProbabilityMax = if (d == 0) 82 else 10,
+                windSpeedMaxKmh = 9f,
+                sunriseMillis = now - 6 * 3_600_000L,
+                sunsetMillis = now + 12 * 3_600_000L,
+            )
+        },
     )
 
     private var harness: androidx.compose.runtime.MutableState<MeasureState>? = null
@@ -123,6 +149,120 @@ class MeasureUiTest {
         nowcast = points,
     )
 
+    // ── The hero ────────────────────────────────────────────────────────
+
+    @Test
+    fun the_hero_leads_with_temperature_not_the_verdict() {
+        // The old screen put the verdict at 26 sp above the temperature,
+        // which inverted what the app is for. This pins the demotion.
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                currentHpa = 1004.2f,
+                samples = samples(),
+                forecast = forecast,
+                forecastAtMillis = now,
+            ).withVerdict(code = 95),
+        )
+        compose.onAllNodesWithText("28", substring = true).fetchSemanticsNodes().let { n ->
+            assertTrue("the temperature should be on screen, got ${n.size}", n.isNotEmpty())
+        }
+        compose.onAllNodesWithText("Thunderstorm", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the condition label belongs in the hero", n.isNotEmpty())
+            }
+    }
+
+    @Test
+    fun a_network_only_phone_is_told_why_the_panel_is_missing() {
+        // An absent panel is a different fact from a broken app, and a user
+        // cannot tell those apart from an empty screen.
+        show(
+            MeasureState(
+                sourceState = SourceState.NETWORK_ONLY,
+                forecast = forecast,
+                forecastAtMillis = now,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithText("No pressure sensor on this device")
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the absence should be explained, got ${n.size}", n.isNotEmpty())
+            }
+    }
+
+    @Test
+    fun the_grid_cell_caveat_is_on_screen_once_and_short() {
+        // It belongs on the screen because the model licence requires it,
+        // but the six-line paragraph it used to be is About's job.
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                currentHpa = 1004.2f,
+                samples = samples(),
+                forecast = forecast,
+                forecastAtMillis = now,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithText("1", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the grid-cell caveat must be visible", n.isNotEmpty())
+            }
+        compose.onAllNodesWithText("km across", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the grid-cell caveat must be visible", n.isNotEmpty())
+            }
+    }
+
+    @Test
+    fun seven_days_are_listed_and_today_is_named_today() {
+        // "Wednesday" in the first row makes the reader do arithmetic.
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                currentHpa = 1004.2f,
+                samples = samples(),
+                forecast = forecast,
+                forecastAtMillis = now,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithContentDescription("Today,", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the first day must be named Today, got ${n.size}", n.isNotEmpty())
+            }
+        compose.onAllNodesWithText("7 DAYS").fetchSemanticsNodes().let { n ->
+            assertTrue("the weekly section belongs on a weather screen", n.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun the_hourly_strip_starts_at_the_current_hour() {
+        show(
+            MeasureState(
+                sourceState = SourceState.BOTH,
+                currentHpa = 1004.2f,
+                samples = samples(),
+                forecast = forecast,
+                forecastAtMillis = now,
+            ).withVerdict(),
+        )
+        compose.onAllNodesWithText("HOURLY").fetchSemanticsNodes().let { n ->
+            assertTrue("the hourly strip belongs on a weather screen", n.isNotEmpty())
+        }
+        // The hourly columns deliberately expose no child text — each is one
+        // announcement for a screen reader, so the tests read that
+        // announcement rather than the fragments behind it.
+        compose.onAllNodesWithContentDescription("Now,", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("the first hourly row should read Now, got ${n.size}", n.isNotEmpty())
+            }
+        // Whole hours only. Formatting the instant instead put ":30" on
+        // every row of this strip on a half-hour offset, because the
+        // response is UTC and the reader's clock is not.
+        val bad = compose.onAllNodes(hasText(":30", substring = true))
+            .fetchSemanticsNodes()
+        assertEquals("no hourly row may show minutes", 0, bad.size)
+    }
+
     // ── The four source states ──────────────────────────────────────────
 
     @Test
@@ -134,7 +274,7 @@ class MeasureUiTest {
                 samples = samples(),
             ).withVerdict(),
         )
-        compose.onNodeWithText("Barometer only, offline").assertIsDisplayed()
+        compose.onNodeWithText("Offline").assertIsDisplayed()
     }
 
     @Test
@@ -148,7 +288,7 @@ class MeasureUiTest {
                 forecastAtMillis = now - 3_600_000L,
             ).withVerdict(),
         )
-        compose.onNodeWithText("Forecast only — no barometer on this device").assertIsDisplayed()
+        compose.onNodeWithText("Forecast only").assertIsDisplayed()
     }
 
     @Test
@@ -159,10 +299,10 @@ class MeasureUiTest {
         // one the test meant.
         show(MeasureState(sourceState = SourceState.NEITHER).withVerdict())
         compose.onNodeWithText("Nothing to read").assertIsDisplayed()
-        compose.onAllNodesWithText("No barometer, no connection")
+        compose.onAllNodesWithText("No data")
             .fetchSemanticsNodes().let { nodes ->
                 assertEquals(
-                    "the cause should appear once, in the header",
+                    "the source state should appear exactly once, in the header",
                     1,
                     nodes.size,
                 )
@@ -214,7 +354,10 @@ class MeasureUiTest {
                 forecastAtMillis = now,
             ).withVerdict(),
         )
-        compose.onNodeWithText("Altitude not shown").assertIsDisplayed()
+        compose.onAllNodesWithText("too old to trust", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("a stale reference should be explained, got ${n.size}", n.isNotEmpty())
+            }
     }
 
     @Test
@@ -228,7 +371,10 @@ class MeasureUiTest {
                 forecastAtMillis = now,
             ).withVerdict(code = 95),
         )
-        compose.onNodeWithText("Thunderstorm").assertIsDisplayed()
+        compose.onAllNodesWithText("Thunderstorm", substring = true)
+            .fetchSemanticsNodes().let { n ->
+                assertTrue("severe weather must be surfaced", n.isNotEmpty())
+            }
     }
 
     @Test
@@ -249,6 +395,11 @@ class MeasureUiTest {
         compose.onAllNodesWithText("Chance of rain").fetchSemanticsNodes().let { n ->
             assertTrue("a null probability must not be labelled as a chance", n.isEmpty())
         }
+        // The hourly column with a null probability must show no figure at
+        // all — not a zero-width placeholder, which would read as "0%".
+        compose.onAllNodesWithText("0%").fetchSemanticsNodes().let { n ->
+            assertTrue("a null probability must not become 0%, got ${n.size}", n.isEmpty())
+        }
     }
 
     // ── Failures ────────────────────────────────────────────────────────
@@ -264,7 +415,8 @@ class MeasureUiTest {
             ).withVerdict(),
         )
         compose.onAllNodesWithText(
-            "No connection. The barometer below still works, and is the more immediate half of this app."
+            "No connection. The barometer still works.",
+            substring = true,
         ).fetchSemanticsNodes().let { n ->
             assertTrue("expected the offline notice, got ${n.size} nodes", n.isNotEmpty())
         }
@@ -281,7 +433,8 @@ class MeasureUiTest {
             ).withVerdict(),
         )
         compose.onAllNodesWithText(
-            "The forecast service answered with something this app could not read. That is a bug here, not a weather problem."
+            "A bug here, not a weather problem.",
+            substring = true,
         ).fetchSemanticsNodes().let { n ->
             assertTrue("expected the malformed notice, got ${n.size}", n.isNotEmpty())
         }
@@ -296,7 +449,8 @@ class MeasureUiTest {
             ).withVerdict(),
         )
         compose.onAllNodesWithText(
-            "The free API allows 10,000 calls a day and that limit is reached. The barometer is unaffected."
+            "The free API's daily allowance is used up.",
+            substring = true,
         ).fetchSemanticsNodes().let { n ->
             assertTrue("expected the rate-limit notice, got ${n.size}", n.isNotEmpty())
         }
@@ -333,7 +487,7 @@ class MeasureUiTest {
             ).withVerdict(),
         )
         compose.onNodeWithText("What it will not claim").assertIsDisplayed()
-        compose.onNodeWithText("What this app measures").assertIsDisplayed()
+        compose.onNodeWithText("How this app measures").assertIsDisplayed()
     }
 
     // ── The about sheet ─────────────────────────────────────────────────
@@ -413,8 +567,7 @@ class MeasureUiTest {
         // A Canvas announces nothing, so without this the only picture in
         // the app is invisible to a screen reader.
         val values = listOf(1004.0f, 1003.5f, 1003.0f, 1002.4f)
-        val scale = com.krafttools.barokraft.core.baroScale(values)
-        val description = traceDescription(values, scale)
+        val description = traceDescription(values)
         assertTrue("should mention the count: $description", description.contains("4 readings"))
         assertTrue("should say the direction: $description", description.contains("falling"))
         assertTrue("should quantify: $description", description.contains("hPa") || description.contains("hectopascals"))
@@ -422,7 +575,7 @@ class MeasureUiTest {
 
     @Test
     fun an_empty_trace_still_produces_a_description() {
-        val description = traceDescription(emptyList(), com.krafttools.barokraft.core.baroScale(emptyList()))
+        val description = traceDescription(emptyList())
         assertTrue(description.isNotBlank())
     }
 

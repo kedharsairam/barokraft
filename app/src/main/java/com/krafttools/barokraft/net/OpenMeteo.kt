@@ -100,7 +100,73 @@ object OpenMeteo {
             utcOffsetSeconds = obj["utc_offset_seconds"].asFloatOrNull()?.toInt() ?: 0,
             hours = hours,
             modelName = modelNameFrom(body),
+            current = parseCurrent(obj),
+            days = parseDays(obj),
         )
+    }
+
+    /**
+     * The `current` block, or null when the response omitted it.
+     *
+     * Null rather than a zeroed record, because every field in here is a
+     * claim about the weather right now and a fabricated one is worse than
+     * an absent one.
+     */
+    internal fun parseCurrent(obj: JsonValue.Obj): Protocol.Current? {
+        val block = obj["current"]
+        if (block !is JsonValue.Obj) return null
+        val seconds = block["time"].asLongOrNull() ?: return null
+        return Protocol.Current(
+            atMillis = seconds * 1000L,
+            temperatureC = block["temperature_2m"].asFloatOrNull(),
+            apparentTemperatureC = block["apparent_temperature"].asFloatOrNull(),
+            weatherCode = block["weather_code"].asIntOrNull(),
+            windSpeedKmh = block["wind_speed_10m"].asFloatOrNull(),
+            // `is_day` arrives as the number 0 or 1, not as a JSON boolean.
+            // Read it with asIntOrNull; asking for a string would silently
+            // give null and the sky behind the app would never change.
+            isDay = block["is_day"].asIntOrNull()?.let { it == 1 },
+            precipitationMm = block["precipitation"].asFloatOrNull(),
+        )
+    }
+
+    /** The `daily` block. An empty list is valid and means "no days". */
+    internal fun parseDays(obj: JsonValue.Obj): List<Protocol.Day> {
+        val block = obj["daily"]
+        if (block !is JsonValue.Obj) return emptyList()
+        val times = block["time"].asArray()
+        if (times.isEmpty()) return emptyList()
+
+        val codes = block["weather_code"].asArray()
+        val max = block["temperature_2m_max"].asArray()
+        val min = block["temperature_2m_min"].asArray()
+        val apparentMax = block["apparent_temperature_max"].asArray()
+        val apparentMin = block["apparent_temperature_min"].asArray()
+        val rainSum = block["precipitation_sum"].asArray()
+        val rainProb = block["precipitation_probability_max"].asArray()
+        val windMax = block["wind_speed_10m_max"].asArray()
+        val sunrise = block["sunrise"].asArray()
+        val sunset = block["sunset"].asArray()
+
+        return times.indices.mapNotNull { i ->
+            val seconds = times[i].asLongOrNull() ?: return@mapNotNull null
+            Protocol.Day(
+                dateMillis = seconds * 1000L,
+                weatherCode = at(codes, i)?.toInt(),
+                temperatureMaxC = at(max, i),
+                temperatureMinC = at(min, i),
+                apparentTemperatureMaxC = at(apparentMax, i),
+                apparentTemperatureMinC = at(apparentMin, i),
+                precipitationSumMm = at(rainSum, i),
+                // A null maximum stays null. A model without an ensemble
+                // returns null here, and printing 0% would be a confident
+                // false statement about the weather.
+                precipitationProbabilityMax = at(rainProb, i)?.toInt(),
+                windSpeedMaxKmh = at(windMax, i),
+                sunriseMillis = at(sunrise, i)?.let { (it.toLong() * 1000L) },
+                sunsetMillis = at(sunset, i)?.let { (it.toLong() * 1000L) },
+            )
+        }
     }
 
     /**

@@ -110,15 +110,80 @@ class PressureSource(
          * simply open, which is a slow memory leak dressed as a feature.
          */
         const val MAX_SAMPLES = 36
+
+        /**
+         * `maxReportLatencyUs`. Zero, and never anything else.
+         *
+         * ## Why this is the important line in the file
+         *
+         * The four-argument `registerListener` takes a **sampling period**
+         * and a **max report latency**, and they are not the same thing. The
+         * second is how long the framework may *batch* events before
+         * delivering any of them.
+         *
+         * An earlier version passed the ten-minute sampling period as both.
+         * That told Android it had up to ten minutes to accumulate events, so
+         * the first one was withheld for ten minutes — and the app's
+         * headline number sat as a pair of dashes for that long after
+         * launch. `dumpsys sensorservice` said it plainly:
+         *
+         *     samplingPeriod=1000000us batchingPeriod=600000000us
+         *     first flush pending: false
+         *
+         * Batching exists to save power when you want *many* readings and can
+         * live with them arriving together. This app wants one reading every
+         * ten minutes and wants each one immediately, so batching saves
+         * nothing and costs the entire first reading.
+         */
+        const val MAX_REPORT_LATENCY_US = 0
+
+        /**
+         * Readings closer together than this are discarded.
+         *
+         * ## Why
+         *
+         * Registering a sensor makes the framework deliver a **burst** of
+         * recent values to fill its history, and those arrive within
+         * milliseconds of each other. Stored as independent readings they
+         * are indistinguishable, from the data's point of view, from a real
+         * 36-hour history: a freshly launched app drew a 30-point trace and
+         * computed a three-hour tendency from readings taken in one second.
+         *
+         * Thirty seconds is well below the ten-minute sampling period and
+         * well above any burst, so nothing real is lost. What it prevents is
+         * the app presenting elapsed time it did not measure.
+         */
+        const val MIN_GAP_MILLIS = 30_000L
     }
 
     private val _samples = mutableListOf<PressureSample>()
 
+    /**
+     * Called on the main thread after every accepted reading.
+     *
+     * ## Why this exists
+     *
+     * Because a sensor that updates itself and tells nobody produces a screen
+     * that never changes. `onSensorChanged` filled the sample list and
+     * nothing re-derived the state from it, so the app could sit showing
+     * dashes with a perfectly good reading sitting in memory — which is
+     * exactly what it did, and it only showed up by watching the screen
+     * after a launch rather than by running any test.
+     *
+     * Null rather than an event, because the only thing a listener can
+     * usefully do here is re-derive everything, and passing the reading
+     * invites a listener that updates one field and leaves the rest stale.
+     */
+    var onSample: (() -> Unit)? = null
+
     /** Set by a test to push a reading, exactly as the sensor would. */
     internal fun inject(hpa: Float, atMillis: Long = clock()) {
+        // No gap check here: a test pushes readings deliberately and is the
+        // authority on what its fixture contains.
         _samples += PressureSample(atMillis, hpa)
         while (_samples.size > MAX_SAMPLES) _samples.removeAt(0)
         latestHpa = hpa
+        onSample?.invoke()
     }
 
     // Guarded because a Context is allowed to have no system services at
@@ -167,7 +232,9 @@ class PressureSource(
             this,
             s,
             SAMPLING_PERIOD_US,
-            SAMPLING_PERIOD_US,
+            // Zero: deliver every event as it happens. See the note on
+            // MAX_REPORT_LATENCY_US for why this is not the sampling period.
+            MAX_REPORT_LATENCY_US,
         )
         if (registered) {
             isSampling = true
@@ -194,10 +261,18 @@ class PressureSource(
             Log.w(TAG, "implausible pressure $value hPa, discarded")
             return
         }
-        val sample = PressureSample(clock(), value)
+        // Drop a burst reading. The framework delivers a catch-up batch on
+        // registration; see MIN_GAP_MILLIS for why those are not data.
+        val now = clock()
+        val previous = _samples.lastOrNull()?.atMillis ?: 0L
+        if (_samples.isNotEmpty() && now - previous < MIN_GAP_MILLIS) return
+
+        val sample = PressureSample(now, value)
         _samples += sample
         while (_samples.size > MAX_SAMPLES) _samples.removeAt(0)
         latestHpa = value
+        onSample?.invoke()
+
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {

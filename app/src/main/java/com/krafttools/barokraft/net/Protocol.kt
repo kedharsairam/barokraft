@@ -45,6 +45,47 @@ object Protocol {
         val surfacePressureHpa: Float?,
     )
 
+    /**
+     * Conditions right now.
+     *
+     * A separate block from the hourly series because the API computes it
+     * as an interpolation of the underlying model rather than as an hour of
+     * it, and because it carries `is_day`, which the hourly series does
+     * not. Matching the nearest hour and throwing away the night flag is
+     * what an earlier version did, and it is why the sky behind the app
+     * could be wrong at dawn and dusk — the two hours a user is most
+     * looking at it.
+     */
+    data class Current(
+        val atMillis: Long,
+        val temperatureC: Float?,
+        val apparentTemperatureC: Float?,
+        val weatherCode: Int?,
+        val windSpeedKmh: Float?,
+        /** 1 for daylight, 0 for night. Null when the model did not say. */
+        val isDay: Boolean?,
+        val precipitationMm: Float?,
+    )
+
+    /** One calendar day of the forecast. */
+    data class Day(
+        /** Midnight UTC of the day, from the API's own `time` array. */
+        val dateMillis: Long,
+        val weatherCode: Int?,
+        val temperatureMaxC: Float?,
+        val temperatureMinC: Float?,
+        val apparentTemperatureMaxC: Float?,
+        val apparentTemperatureMinC: Float?,
+        val precipitationSumMm: Float?,
+        val precipitationProbabilityMax: Int?,
+        val windSpeedMaxKmh: Float?,
+        val sunriseMillis: Long?,
+        val sunsetMillis: Long?,
+    ) {
+        /** True when the API supplied both ends of the day's range. */
+        val hasRange: Boolean get() = temperatureMaxC != null && temperatureMinC != null
+    }
+
     /** A parsed response. */
     data class Forecast(
         val latitude: Double,
@@ -54,6 +95,8 @@ object Protocol {
         val hours: List<Hour>,
         /** The model run this came from, if the API told us. */
         val modelName: String?,
+        val current: Current? = null,
+        val days: List<Day> = emptyList(),
     ) {
         val isEmpty: Boolean get() = hours.isEmpty()
 
@@ -99,11 +142,39 @@ object Protocol {
             "surface_pressure",
         ).joinToString(",")
 
+        // `current` is not a subset of the hourly block. The API computes it
+        // as an interpolation of the model and includes `is_day`, which the
+        // hourly series has no column for — and that flag is what decides
+        // whether the sky behind this app is day or night.
+        val currentVariables = listOf(
+            "temperature_2m",
+            "apparent_temperature",
+            "weather_code",
+            "wind_speed_10m",
+            "is_day",
+            "precipitation",
+        ).joinToString(",")
+
+        val dailyVariables = listOf(
+            "weather_code",
+            "temperature_2m_max",
+            "temperature_2m_min",
+            "apparent_temperature_max",
+            "apparent_temperature_min",
+            "precipitation_sum",
+            "precipitation_probability_max",
+            "wind_speed_10m_max",
+            "sunrise",
+            "sunset",
+        ).joinToString(",")
+
         return buildString {
             append("https://api.open-meteo.com/v1/forecast")
             append("?latitude=").append(trimCoord(latitude))
             append("&longitude=").append(trimCoord(longitude))
             append("&hourly=").append(variables)
+            append("&current=").append(currentVariables)
+            append("&daily=").append(dailyVariables)
             append("&timezone=UTC")
             append("&timeformat=unixtime")
             append("&forecast_days=").append(forecastDays.coerceIn(1, 16))

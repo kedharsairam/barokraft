@@ -126,6 +126,25 @@ class MeasureViewModel(
     init {
         val saved = store.loadPlace()
         reference = store.loadReference()
+
+        // Start reading without being asked.
+        //
+        // The app's entire premise is the barometer, and it opened showing
+        // an em dash behind a button — so the first thing a user saw was the
+        // app looking broken, when all it needed was a tap they had no way
+        // of knowing they were required to make.
+        //
+        // This costs nothing that was not already being spent: sampling is
+        // screen-open only, there is no foreground service, and the sensor
+        // stops in `onStop`. Auto-start does not change the battery story,
+        // it only removes a pointless gate in front of the main feature.
+        if (pressureSource.isAvailable) {
+            // Wire the notification before starting, or the first reading
+            // arrives into a ViewModel that is not listening yet.
+            pressureSource.onSample = { recompute(online = onlineCheck()) }
+            pressureSource.start()
+        }
+
         recompute(online = onlineCheck())
         if (saved != null) {
             state = state.copy(place = saved)
@@ -496,6 +515,10 @@ class MeasureViewModel(
         com.krafttools.barokraft.core.tendencyHpaPerHour(samples)
 
     override fun onCleared() {
+        // Detach before stopping. A sensor callback that lands after the
+        // ViewModel is cleared would re-derive state nobody will read, and
+        // in tests it keeps the ViewModel reachable.
+        pressureSource.onSample = null
         pressureSource.stop()
         super.onCleared()
     }
