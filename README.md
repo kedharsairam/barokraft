@@ -14,6 +14,11 @@ BaroKraft shows both, separately, and tells you when they disagree.
 
 ## What it does
 
+**Shows conditions, hours and days first, and the barometer second.** The
+barometer is what makes this app different; it is not what someone opens the
+app to see. It gets the most considered treatment on the screen, not the
+largest.
+
 **Reads the barometer offline.** Sampling every 10 minutes while the screen
 is open. A pressure sensor is good to about 0.012 hPa and a day's weather
 is 10–40 hPa, so a faster interval collects noise, costs battery, and
@@ -108,7 +113,7 @@ Requires JDK 17. Everything else the build fetches.
 
 ```bash
 ./gradlew :app:assembleDebug        # debug APK
-./gradlew :app:testDebugUnitTest    # 197 unit tests
+./gradlew :app:testDebugUnitTest    # 224 unit tests
 ./gradlew :app:assembleRelease      # release APK, debug-signed
 ```
 
@@ -117,12 +122,12 @@ release keystore to leak, and GitHub releases do not need one.
 
 ## Tests
 
-**197 unit tests and 21 instrumented tests, all passing.**
+**224 unit tests and 26 instrumented tests, all passing.**
 
 | Suite | Tests | What it holds |
 | --- | --- | --- |
 | `ProtocolTest` | 23 | Request construction, response pairing |
-| `MeasureViewModelTest` | 22 | The whole state machine, and the factory that crashed |
+| `MeasureViewModelTest` | 26 | The whole state machine, and the factory that crashed |
 | `MethodTest` | 22 | Every published sentence, tied to its arithmetic |
 | `VerdictTest` | 21 | The six-branch precedence |
 | `NowcastTest` | 20 | The ensemble |
@@ -131,6 +136,7 @@ release keystore to leak, and GitHub releases do not need one.
 | `BaroTest` | 17 | Tendency, altitude, the plot scale |
 | `PolicyTest` | 15 | Which source may be shown at all |
 | `SeaLevelTest` | 14 | Reference staleness and drift |
+| `SkyTest` | 23 | Sky palettes, glyphs, and the hourly and day labels |
 | `EdgeContractTest` | 6 | The live API's actual contract |
 
 `EdgeContractTest` hits the real Open-Meteo endpoint. Every other test
