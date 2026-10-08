@@ -74,6 +74,12 @@ jobs:
     needs: unit
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout kraft-foundation (composite-build sibling)
+        uses: actions/checkout@v4
+        with:
+          repository: kedharsairam/kraft-foundation
+          path: kraft-foundation
+
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -117,6 +123,12 @@ jobs:
     # and nothing in this app uses them.
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout kraft-foundation (composite-build sibling)
+        uses: actions/checkout@v4
+        with:
+          repository: kedharsairam/kraft-foundation
+          path: kraft-foundation
+
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
