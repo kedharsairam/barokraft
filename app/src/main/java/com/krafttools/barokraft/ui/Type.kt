@@ -8,6 +8,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Typography
+import com.kraft.ui.tokens.KraftSpacing
+import com.kraft.ui.tokens.KraftTypeScale
 
 /**
  * The type scale.
@@ -37,8 +40,25 @@ import androidx.compose.ui.unit.sp
  * up 4dp tighter than the page behind it, which is the kind of thing only
  * a screenshot comparison ever notices.
  */
-internal val Gap = 8.dp
-internal val Pad = 20.dp
+internal val Gap = KraftSpacing.Spacing8
+internal val Pad = KraftSpacing.Spacing20
+
+/**
+ * The slots Material components read internally — buttons, dialogs, sliders. Built from
+ * the shared sizes so a change to the scale reaches them; Sans, because this app's Latin
+ * face is the system sans throughout. The app's own text keeps using `label`, `figure`
+ * and `smallFigure` below, which is why those stay as content styles rather than slots.
+ */
+internal val BaroTypography = Typography(
+    displayLarge = TextStyle(fontSize = KraftTypeScale.LargeTitle, fontWeight = FontWeight.Bold),
+    headlineMedium = TextStyle(fontSize = KraftTypeScale.Title2, fontWeight = FontWeight.SemiBold),
+    headlineSmall = TextStyle(fontSize = KraftTypeScale.Title3, fontWeight = FontWeight.SemiBold),
+    titleLarge = TextStyle(fontSize = KraftTypeScale.Headline, fontWeight = FontWeight.SemiBold),
+    titleMedium = TextStyle(fontSize = KraftTypeScale.Callout, fontWeight = FontWeight.Medium),
+    bodyLarge = TextStyle(fontSize = KraftTypeScale.Body),
+    bodyMedium = TextStyle(fontSize = KraftTypeScale.Subheadline),
+    labelMedium = TextStyle(fontSize = KraftTypeScale.Caption1, fontWeight = FontWeight.Medium),
+)
 
 internal val label = TextStyle(
     fontFamily = FontFamily.SansSerif,

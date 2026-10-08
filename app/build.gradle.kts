@@ -84,6 +84,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
 
+    // Kraft Foundation — composite build, substituted in settings.gradle.kts.
+    implementation("com.kraft:kraft-ui")
+    implementation("com.kraft:kraft-core")
+
     // OkHttp, and *not* a hand-rolled socket client like PulseKraft uses.
     //
     // That is a deliberate difference, not an inconsistency. PulseKraft

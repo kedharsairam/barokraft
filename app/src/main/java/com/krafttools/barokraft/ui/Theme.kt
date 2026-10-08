@@ -1,6 +1,9 @@
 package com.krafttools.barokraft.ui
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
 
 /**
  * The palette, measured rather than chosen.
@@ -88,3 +91,50 @@ val WaterBlue = Color(0xFF5FB0F5)
 /** The two ends of a daily temperature range bar. */
 val Cool = Color(0xFF6BA8FF)
 val Warm = Color(0xFFFFB067)
+
+/**
+ * The app's colour scheme, assembled from the palette above.
+ *
+ * This file previously declared colours and nothing else — no theme composable existed
+ * anywhere, so every MaterialTheme.colorScheme reference in the app resolved to Material's
+ * own defaults and the app was inconsistent with itself without reporting it. That is the
+ * defect `type.m3-wrapper-present` exists for, and this app was the app it was written for.
+ *
+ * The mapping is structural where possible, semantic where it must be: surfaces and text
+ * follow the M3 roles directly, while Falling/Rising/Steady and Warning/Critical stay
+ * outside the scheme as status colours (like the foundation's own per-app accent rule —
+ * a speed test and a barometer should not look like the same product, and neither should
+ * two different pressure trends).
+ */
+private val BaroColors = darkColorScheme(
+    primary = Accent,
+    onPrimary = TextPrimary,
+    primaryContainer = AccentDim,
+    onPrimaryContainer = TextPrimary,
+    secondary = Cool,
+    onSecondary = Ink,
+    tertiary = Warm,
+    onTertiary = Ink,
+    background = Ink,
+    onBackground = TextPrimary,
+    surface = Surface1,
+    onSurface = TextPrimary,
+    surfaceVariant = Surface2,
+    onSurfaceVariant = TextSecondary,
+    outline = Hairline,
+    error = Critical,
+    onError = TextPrimary,
+)
+
+/**
+ * The theme wrapper. Every screen enters through here; without it, Material colours and
+ * type resolve to defaults silently.
+ */
+@Composable
+fun BaroTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = BaroColors,
+        typography = BaroTypography,
+        content = content,
+    )
+}

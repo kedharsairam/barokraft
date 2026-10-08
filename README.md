@@ -185,6 +185,24 @@ If you enjoy BaroKraft, buy me a coffee:
   <a href="https://buymeacoffee.com/kedhartech"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="182"></a>
 </p>
 
+## Design
+
+Spacing, type, radius, motion and touch targets come from
+[kraft-foundation](https://github.com/kedharsairam/kraft-foundation), which is also where the
+standard this app is built to is written down. It targets **standard 1.0.0**, and
+`kraft-lint` in that repository is what checks it.
+
+This app previously had no theme at all — no wrapper, no scheme, every Material reference
+resolving to defaults silently — which is the defect `type.m3-wrapper-present` exists for,
+and this app was the app it was written for. It now enters through `BaroTheme`, with the
+palette assembled into a scheme and the type scale's sizes taken from `KraftTypeScale`. The
+app's own text keeps its voices: `label` for body, `figure` (44sp Mono Light) for the hero
+pressure readout, `smallFigure` for secondary figures — content typography sized to the
+sky, not the scale. The sky geometry (`BaroMetrics`: 560dp sky, the contrast scrim, day
+caps) and the status colours stay local with their reasons.
+
+BaroKraft is the last of the nine apps to move.
+
 ## License
 
 [MIT](LICENSE)

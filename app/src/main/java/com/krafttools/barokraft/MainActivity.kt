@@ -41,6 +41,11 @@ import com.krafttools.barokraft.ui.TextPrimary
 import com.krafttools.barokraft.ui.TextSecondary
 import com.krafttools.barokraft.ui.clickableNoRipple
 import com.krafttools.barokraft.ui.label
+import com.kraft.ui.tokens.KraftTypeScale
+import com.krafttools.barokraft.ui.BaroTheme
+import com.kraft.ui.tokens.KraftSpacing
+import com.kraft.ui.tokens.KraftRadius
+import com.krafttools.barokraft.ui.BaroMetrics
 
 class MainActivity : ComponentActivity() {
 
@@ -62,11 +67,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val state = viewModel.state
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Ink),
-            ) {
+            // The theme wrapper. Without it every MaterialTheme.colorScheme and typography
+            // reference below resolves to Material defaults silently — which is how this
+            // app shipped for months, inconsistent with itself, reporting nothing.
+            BaroTheme {
                 MeasureContent(
                     state = state,
                     nowMillis = System.currentTimeMillis(),
@@ -136,22 +140,22 @@ private fun PlacePicker(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                .clip(RoundedCornerShape(topStart = KraftSpacing.Spacing20, topEnd = KraftSpacing.Spacing20))
                 .background(Surface1)
                 .safeDrawingPadding()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(KraftSpacing.Spacing20),
+            verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing8),
         ) {
             Text(
                 "Choose a city",
-                style = label.copy(fontSize = 18.sp()),
+                style = label.copy(fontSize = KraftTypeScale.Title3),
             )
             Text(
                 "Typed, not read from the device. This app holds no location permission.",
-                style = label.copy(fontSize = 12.sp()),
+                style = label.copy(fontSize = KraftTypeScale.Caption1),
                 color = TextMuted,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing4))
             TextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -172,41 +176,41 @@ private fun PlacePicker(
                 ),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing4))
             if (searching) {
-                Text("Searching…", style = label.copy(fontSize = 13.sp()), color = TextSecondary)
+                Text("Searching…", style = label.copy(fontSize = KraftTypeScale.Footnote), color = TextSecondary)
             } else if (empty) {
                 Text(
                     "No city matched \"$query\". Try a different spelling.",
-                    style = label.copy(fontSize = 13.sp()),
+                    style = label.copy(fontSize = KraftTypeScale.Footnote),
                     color = TextSecondary,
                 )
             }
             LazyColumn(
                 Modifier
                     .fillMaxWidth()
-                    .height(280.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .height(BaroMetrics.PlacePickerHeight),
+                verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing4),
             ) {
                 items(results, key = { "${it.latitude},${it.longitude}" }) { place ->
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(KraftRadius.Small))
                             .background(Surface2)
-                            .padding(14.dp)
+                            .padding(KraftSpacing.Spacing16)
                             .clickableNoRipple { onChoose(place) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             place.displayName,
-                            style = label.copy(fontSize = 14.sp()),
+                            style = label,
                             color = TextPrimary,
                             modifier = Modifier.weight(1f),
                         )
                         Text(
                             "Pick",
-                            style = label.copy(fontSize = 13.sp()),
+                            style = label.copy(fontSize = KraftTypeScale.Footnote),
                             color = Accent,
                         )
                     }
@@ -214,11 +218,11 @@ private fun PlacePicker(
             }
             Text(
                 "Close",
-                style = label.copy(fontSize = 14.sp()),
+                style = label,
                 color = Accent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp)
+                    .padding(vertical = KraftSpacing.Spacing12)
                     .clickableNoRipple(onDismiss),
             )
         }

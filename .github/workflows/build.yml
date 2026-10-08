@@ -23,6 +23,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # kraft-foundation is public, so no credentials are needed. It sits beside the
+      # repository root because the app consumes it as a composite build
+      # (`includeBuild("../kraft-foundation")` in settings.gradle.kts).
+      - name: Checkout kraft-foundation (composite-build sibling)
+        uses: actions/checkout@v4
+        with:
+          repository: kedharsairam/kraft-foundation
+          path: kraft-foundation
+
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -32,6 +41,11 @@ jobs:
 
       - name: Gradle wrapper validation
         uses: gradle/actions/wrapper-validation@v4
+
+      # `quality.ci-runs-the-gate` fails if this step is removed. No working-directory:
+        # the app is checked out at the workspace root and the foundation beside it.
+      - name: Quality gate
+        run: node kraft-foundation/tools/kraft-lint/kraft-lint.js . --format github
 
       - name: Unit tests
         # No daemon: a CI machine starts cold and lives for one job, so the

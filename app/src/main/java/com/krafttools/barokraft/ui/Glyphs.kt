@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.krafttools.barokraft.core.Glyph
+import com.kraft.ui.tokens.KraftSpacing
 
 /**
  * Weather marks, drawn rather than shipped.
@@ -52,7 +53,7 @@ fun WeatherIcon(
     glyph: Glyph?,
     tint: Color,
     modifier: Modifier = Modifier,
-    size: Dp = 32.dp,
+    size: Dp = KraftSpacing.Spacing32,
     /** The words a screen reader gets. Announced instead of the drawing. */
     description: String? = null,
 ) {

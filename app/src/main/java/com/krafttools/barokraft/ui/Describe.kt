@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.krafttools.barokraft.core.BaroScale
 import com.krafttools.barokraft.core.fmt1
+import com.kraft.ui.tokens.KraftTypeScale
+import com.kraft.ui.tokens.KraftSpacing
 
 /**
  * A sentence about the pressure trace, built from the trace.
@@ -73,20 +75,20 @@ internal fun ageLabel(hours: Float): String = when {
 @Composable
 internal fun KeyValue(key: String, value: String, caveat: String? = null) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        Modifier.fillMaxWidth().padding(vertical = KraftSpacing.Spacing4),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text(key, style = label.copy(fontSize = 12.sp), color = TextSecondary)
+            Text(key, style = label.copy(fontSize = KraftTypeScale.Caption1), color = TextSecondary)
             caveat?.let {
-                Spacer(Modifier.height(1.dp))
-                Text(it, style = label.copy(fontSize = 10.sp), color = Warning)
+                Spacer(Modifier.height(KraftSpacing.BorderWidth))
+                Text(it, style = label.copy(fontSize = KraftTypeScale.Badge), color = Warning)
             }
         }
         Text(
             value,
-            style = label.copy(fontSize = 14.sp),
+            style = label,
             modifier = Modifier.clearAndSetSemantics {
                 contentDescription = buildString {
                     append(key)

@@ -41,6 +41,9 @@ import com.krafttools.barokraft.core.fmt1
 import com.krafttools.barokraft.core.seaLevelFromAltitude
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.kraft.ui.tokens.KraftTypeScale
+import com.kraft.ui.tokens.KraftSpacing
+import com.kraft.ui.tokens.KraftRadius
 
 /**
  * Setting the sea-level reference.
@@ -89,12 +92,12 @@ fun ReferenceSheet(
                 .weight(1f)
                 .fillMaxWidth()
                 .safeDrawingPadding()
-                .padding(horizontal = Pad, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = Pad, vertical = KraftSpacing.Spacing16),
+            verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing12),
         ) {
             Text(
                 "Sea-level reference",
-                style = label.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
+                style = label.copy(fontSize = KraftTypeScale.Title3, fontWeight = FontWeight.SemiBold),
                 modifier = Modifier.semantics { heading() },
             )
             Text(
@@ -102,14 +105,14 @@ fun ReferenceSheet(
                     "to where you are. Without one there is no altitude, because the " +
                     "sensor cannot tell the difference between high ground and a low " +
                     "pressure system.",
-                style = label.copy(fontSize = 13.sp, lineHeight = 19.sp),
+                style = label.copy(fontSize = KraftTypeScale.Footnote, lineHeight = 19.sp), // @kraft-lint-ignore type.no-raw-sp — dense note leading, tighter than label 20
                 color = TextSecondary,
             )
 
             if (station == null) {
                 Text(
                     "Waiting for the first pressure reading.",
-                    style = label.copy(fontSize = 13.sp),
+                    style = label.copy(fontSize = KraftTypeScale.Footnote),
                     color = Warning,
                 )
             }
@@ -117,13 +120,13 @@ fun ReferenceSheet(
             // ── From altitude ──────────────────────────────────────────────
             Text(
                 "IF YOU KNOW YOUR ALTITUDE",
-                style = label.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.3.sp),
+                style = label.copy(fontSize = KraftTypeScale.Badge, fontWeight = FontWeight.SemiBold, letterSpacing = 1.3.sp), // @kraft-lint-ignore type.no-raw-sp — display micro-label tracking, off-scale by design
                 color = TextMuted,
             )
             Text(
                 "Meters above sea level — a known floor, a map contour, the number " +
                     "on a sign. This is the option most people can actually use.",
-                style = label.copy(fontSize = 12.sp),
+                style = label.copy(fontSize = KraftTypeScale.Caption1),
                 color = TextSecondary,
             )
             NumberField(
@@ -158,16 +161,16 @@ fun ReferenceSheet(
             )
 
             // ── From QNH ──────────────────────────────────────────────────
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing4))
             Text(
                 "IF YOU HAVE A QNH",
-                style = label.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.3.sp),
+                style = label.copy(fontSize = KraftTypeScale.Badge, fontWeight = FontWeight.SemiBold, letterSpacing = 1.3.sp), // @kraft-lint-ignore type.no-raw-sp — display micro-label tracking, off-scale by design
                 color = TextMuted,
             )
             Text(
                 "The sea-level pressure from a chart or a flight plan. More accurate " +
                     "than an altitude estimate, if you have one.",
-                style = label.copy(fontSize = 12.sp),
+                style = label.copy(fontSize = KraftTypeScale.Caption1),
                 color = TextSecondary,
             )
             NumberField(
@@ -200,7 +203,7 @@ fun ReferenceSheet(
 
             // ── What is set, and what it is worth ─────────────────────────
             state.reference?.let { ref ->
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(KraftSpacing.Spacing4))
                 ReferenceSummary(ref, state.staleness, station)
             }
 
@@ -213,15 +216,15 @@ fun ReferenceSheet(
         if (state.reference != null) {
             Text(
                 "Forget this reference",
-                style = label.copy(fontSize = 14.sp),
+                style = label,
                 color = Critical,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Pad)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(KraftRadius.Standard))
                     .background(Surface2)
-                    .padding(vertical = 13.dp)
+                    .padding(vertical = KraftSpacing.Spacing12)
                     // Clickable before the description — see the note in
                     // AboutSheet.kt for why the other order is silent.
                     .clickableNoRipple {
@@ -234,15 +237,15 @@ fun ReferenceSheet(
 
         Text(
             "Close",
-            style = label.copy(fontSize = 15.sp),
+            style = label.copy(fontSize = KraftTypeScale.Subheadline),
             color = Accent,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Pad, vertical = 12.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .padding(horizontal = Pad, vertical = KraftSpacing.Spacing12)
+                .clip(RoundedCornerShape(KraftRadius.Standard))
                 .background(Surface2)
-                .padding(vertical = 13.dp)
+                .padding(vertical = KraftSpacing.Spacing12)
                 .clickableNoRipple(onDismiss),
         )
     }
@@ -270,35 +273,35 @@ private fun ReferenceSummary(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(KraftRadius.Medium))
             .background(Surface1.copy(alpha = 0.7f))
-            .padding(13.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(KraftSpacing.Spacing12),
+        verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing4),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Current reference", style = label.copy(fontSize = 12.sp), color = TextSecondary)
-            Text("${fmt1(reference.hpa)} hPa", style = label.copy(fontSize = 13.sp))
+            Text("Current reference", style = label.copy(fontSize = KraftTypeScale.Caption1), color = TextSecondary)
+            Text("${fmt1(reference.hpa)} hPa", style = label.copy(fontSize = KraftTypeScale.Footnote))
         }
         if (derived != null) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Gives an altitude of", style = label.copy(fontSize = 12.sp), color = TextSecondary)
+                Text("Gives an altitude of", style = label.copy(fontSize = KraftTypeScale.Caption1), color = TextSecondary)
                 Text(
                     "${derived.roundToInt()} m",
-                    style = label.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                    style = label.copy(fontSize = KraftTypeScale.Footnote, fontWeight = FontWeight.Medium),
                     color = if (abs(derived) > 4_000f) Warning else TextPrimary,
                 )
             }
             if (abs(derived) > 4_000f) {
                 Text(
                     "That is not a plausible altitude. The reference is probably wrong.",
-                    style = label.copy(fontSize = 11.sp),
+                    style = label.copy(fontSize = KraftTypeScale.Caption2),
                     color = Warning,
                 )
             }
         }
         Text(
             stalenessWord(hours),
-            style = label.copy(fontSize = 11.sp),
+            style = label.copy(fontSize = KraftTypeScale.Caption2),
             color = when (hours) {
                 ReferenceStaleness.FRESH -> TextMuted
                 ReferenceStaleness.AGING -> Warning
@@ -368,9 +371,9 @@ private fun NumberField(
             trailingIcon = {
                 Text(
                     suffix,
-                    style = label.copy(fontSize = 13.sp),
+                    style = label.copy(fontSize = KraftTypeScale.Footnote),
                     color = TextMuted,
-                    modifier = Modifier.padding(end = 12.dp),
+                    modifier = Modifier.padding(end = KraftSpacing.Spacing12),
                 )
             },
             modifier = Modifier
@@ -378,10 +381,10 @@ private fun NumberField(
                 .semantics { contentDescription = "$fieldLabel in $suffix" },
         )
         if (error != null) {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing4))
             Text(
                 error,
-                style = label.copy(fontSize = 12.sp),
+                style = label.copy(fontSize = KraftTypeScale.Caption1),
                 color = Critical,
                 modifier = Modifier.clearAndSetSemantics { contentDescription = error },
             )
@@ -393,13 +396,13 @@ private fun NumberField(
 private fun Action(text: String, enabled: Boolean, onClick: () -> Unit) {
     Text(
         text,
-        style = label.copy(fontSize = 14.sp, color = if (enabled) Accent else TextMuted),
+        style = label.copy(color = if (enabled) Accent else TextMuted),
         textAlign = TextAlign.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(KraftRadius.Standard))
             .background(if (enabled) Surface2 else Surface1.copy(alpha = 0.5f))
-            .padding(vertical = 13.dp)
+            .padding(vertical = KraftSpacing.Spacing12)
             .clickableNoRipple(if (enabled) onClick else ({ /* disabled */ }))
             .semantics { contentDescription = text },
     )
@@ -407,9 +410,9 @@ private fun Action(text: String, enabled: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun MethodParagraph(heading: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(heading, style = label.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium))
-        Text(body, style = label.copy(fontSize = 11.sp, lineHeight = 16.sp), color = TextMuted)
+    Column(verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing2)) {
+        Text(heading, style = label.copy(fontSize = KraftTypeScale.Footnote, fontWeight = FontWeight.Medium))
+        Text(body, style = label.copy(fontSize = KraftTypeScale.Caption2, lineHeight = 16.sp), color = TextMuted) // @kraft-lint-ignore type.no-raw-sp — dense note leading, tighter than label 20
     }
 }
 

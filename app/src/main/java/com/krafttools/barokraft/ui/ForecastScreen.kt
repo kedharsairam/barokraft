@@ -55,6 +55,10 @@ import com.krafttools.barokraft.core.tendencyHpaPerHour
 import com.krafttools.barokraft.net.Failure
 import com.krafttools.barokraft.net.Protocol
 import kotlin.math.roundToInt
+import com.kraft.ui.tokens.KraftTypeScale
+import com.kraft.ui.tokens.KraftSpacing
+import com.kraft.ui.tokens.KraftRadius
+import com.krafttools.barokraft.ui.BaroMetrics
 
 /**
  * The screen.
@@ -132,7 +136,7 @@ fun MeasureContent(
             page = Ink,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(560.dp),
+                .height(BaroMetrics.SkyHeight),
         )
 
         // The contrast guarantee. Sits over the top of the sky, under the
@@ -146,7 +150,7 @@ fun MeasureContent(
         SkyScrim(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(400.dp),
+                .height(BaroMetrics.SkyScrimHeight),
         )
 
         Column(
@@ -154,8 +158,8 @@ fun MeasureContent(
                 .fillMaxSize()
                 .safeDrawingPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = Pad, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = Pad, vertical = KraftSpacing.Spacing8),
+            verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing16),
         ) {
             Header(state, onSky, onOpenPlacePicker)
             NowHero(state, forecast, onSky, onOpenPlacePicker)
@@ -172,10 +176,10 @@ fun MeasureContent(
             // by the model licence, and a forecast presented without it
             // reads as a statement about your street.
             if (forecast != null) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(KraftSpacing.Spacing2))
                 Text(
                     "Forecasts describe a grid cell 1–25 km across, not this street.",
-                    style = label.copy(fontSize = 10.sp),
+                    style = label.copy(fontSize = KraftTypeScale.Badge),
                     color = TextMuted.copy(alpha = 0.75f),
                 )
             }
@@ -194,7 +198,7 @@ fun MeasureContent(
             state.verdict?.let { VerdictStrip(it, onPage) }
             FailureNotice(state.failure, state)
             Controls(state, onToggleSampling, onOpenMethod, onOpenAbout)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing12))
         }
 
         if (state.showingMethod) MethodSheet(onDismissMethod)
@@ -231,7 +235,7 @@ private fun contrastOn(colour: Long): Color {
     val luminance = 0.2126f * lum(r) + 0.7152f * lum(g) + 0.0722f * lum(b)
     val vsWhite = 1.05f / (luminance + 0.05f)
     val vsBlack = (luminance + 0.05f) / 0.05f
-    return if (vsWhite >= vsBlack) Color.White else Color(0xFF0B0B10)
+    return if (vsWhite >= vsBlack) Color.White else Ink
 }
 
 /**
@@ -288,31 +292,31 @@ private fun Header(state: MeasureState, onSky: Color, onOpenPlacePicker: () -> U
             Text(
                 "BaroKraft",
                 style = label.copy(
-                    fontSize = 13.sp,
+                    fontSize = KraftTypeScale.Footnote,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.6.sp,
+                    letterSpacing = 1.6.sp, // @kraft-lint-ignore type.no-raw-sp — brand mark tracking
                 ),
                 color = onSky.copy(alpha = 0.75f),
             )
             state.place?.let {
                 Text(
                     it.displayName,
-                    style = label.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
+                    style = label.copy(fontSize = KraftTypeScale.Title3, fontWeight = FontWeight.SemiBold),
                     color = onSky,
                 )
             } ?: Text(
                 "Choose a city",
-                style = label.copy(fontSize = 20.sp, fontWeight = FontWeight.Medium),
+                style = label.copy(fontSize = KraftTypeScale.Title3, fontWeight = FontWeight.Medium),
                 color = onSky.copy(alpha = 0.9f),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(KraftRadius.Small))
                     .clickableNoRipple(onOpenPlacePicker)
                     .semantics { contentDescription = "No city chosen. Tap to choose one." },
             )
         }
         Text(
             sourceLine(state.sourceState),
-            style = label.copy(fontSize = 11.sp),
+            style = label.copy(fontSize = KraftTypeScale.Caption2),
             color = onSky.copy(alpha = 0.8f),
         )
     }
@@ -346,7 +350,7 @@ private fun NowHero(
         Modifier
             .fillMaxWidth()
             .semantics { heading() },
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing2),
     ) {
         Row(
             Modifier.fillMaxWidth(),
@@ -364,24 +368,24 @@ private fun NowHero(
                 Text(
                     text = current.temperatureC.roundToInt().toString(),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
-                    fontSize = 84.sp,
-                    lineHeight = 88.sp,
+                    fontSize = 84.sp, // @kraft-lint-ignore type.no-raw-sp — hero temperature, sized to the sky
+                    lineHeight = 88.sp, // @kraft-lint-ignore type.no-raw-sp — hero leading
                     fontWeight = FontWeight.Thin,
                     color = onSky,
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(KraftSpacing.Spacing6))
                 WeatherIcon(
                     glyph = glyphFor(code),
                     tint = onSky.copy(alpha = 0.95f),
-                    size = 52.dp,
+                    size = KraftSpacing.Spacing48,
                     description = describeGlyph(code),
-                    modifier = Modifier.padding(bottom = 10.dp),
+                    modifier = Modifier.padding(bottom = KraftSpacing.Spacing8),
                 )
             } else {
                 Text(
                     "No city yet",
                     style = label.copy(
-                        fontSize = 34.sp,
+                        fontSize = KraftTypeScale.LargeTitle,
                         fontWeight = FontWeight.Thin,
                     ),
                     color = onSky.copy(alpha = 0.9f),
@@ -393,13 +397,13 @@ private fun NowHero(
         if (current?.temperatureC != null) {
             Text(
                 conditionLabel,
-                style = label.copy(fontSize = 21.sp, fontWeight = FontWeight.Medium),
+                style = label.copy(fontSize = KraftTypeScale.Title2, fontWeight = FontWeight.Medium),
                 color = onSky,
             )
         } else {
             Text(
                 "Tap to pick one, and this becomes a forecast.",
-                style = label.copy(fontSize = 15.sp),
+                style = label.copy(fontSize = KraftTypeScale.Subheadline),
                 color = onSky.copy(alpha = 0.85f),
             )
         }
@@ -418,7 +422,7 @@ private fun NowHero(
         if (details.isNotEmpty()) {
             Text(
                 details.joinToString("   ·   "),
-                style = label.copy(fontSize = 14.sp),
+                style = label,
                 color = onSky.copy(alpha = 0.85f),
             )
         }
@@ -439,22 +443,22 @@ private fun HourlyStrip(forecast: Protocol.Forecast, nowMillis: Long, onPage: Co
     GlassCard {
         Text(
             "HOURLY",
-            style = label.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp),
+            style = label.copy(fontSize = KraftTypeScale.Badge, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp), // @kraft-lint-ignore type.no-raw-sp — display micro-label tracking, off-scale by design
             color = TextMuted,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(KraftSpacing.Spacing8))
         Row(
             Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing4),
         ) {
             hours.forEach { hour ->
                 val prob = hour.precipitationProbability
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .width(52.dp)
+                        .width(KraftSpacing.Spacing48)
                         // The whole column is one announcement, so a screen
                         // reader says "15, rain, 14 degrees, 80% chance"
                         // rather than four unrelated fragments.
@@ -466,31 +470,31 @@ private fun HourlyStrip(forecast: Protocol.Forecast, nowMillis: Long, onPage: Co
                                 prob?.let { append(", $it percent chance of rain") }
                             }
                         },
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing6),
                 ) {
                     Text(
                         hourLabel(hour.atMillis, nowMillis),
-                        style = label.copy(fontSize = 12.sp),
+                        style = label.copy(fontSize = KraftTypeScale.Caption1),
                         color = TextSecondary,
                     )
                     WeatherIcon(
                         glyph = glyphFor(hour.weatherCode),
                         tint = onPage,
-                        size = 24.dp,
+                        size = KraftSpacing.Spacing24,
                     )
                     Text(
                         hour.temperatureC?.let { "${it.roundToInt()}°" } ?: "–",
-                        style = label.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                        style = label.copy(fontSize = KraftTypeScale.Callout, fontWeight = FontWeight.Medium),
                         color = onPage,
                     )
                     // Only drawn when the API supplied a probability. A
                     // zero-width placeholder here would be the app claiming
                     // zero chance of rain when it simply does not know.
-                    Box(Modifier.height(14.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.height(KraftSpacing.Spacing16), contentAlignment = Alignment.Center) {
                         if (prob != null && prob > 0) {
                             Text(
                                 "$prob%",
-                                style = label.copy(fontSize = 10.sp),
+                                style = label.copy(fontSize = KraftTypeScale.Badge),
                                 color = if (prob >= 40) WaterBlue else TextMuted,
                             )
                         }
@@ -517,15 +521,15 @@ private fun DayRows(days: List<Protocol.Day>, nowMillis: Long, onPage: Color) {
     GlassCard {
         Text(
             "7 DAYS",
-            style = label.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp),
+            style = label.copy(fontSize = KraftTypeScale.Badge, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp), // @kraft-lint-ignore type.no-raw-sp — display micro-label tracking, off-scale by design
             color = TextMuted,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(KraftSpacing.Spacing6))
         shown.forEachIndexed { i, day ->
             DayRow(day, nowMillis, weekMin, weekMax, onPage)
             if (i != shown.lastIndex) {
-                Spacer(Modifier.height(2.dp))
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Hairline))
+                Spacer(Modifier.height(KraftSpacing.Spacing2))
+                Box(Modifier.fillMaxWidth().height(KraftSpacing.BorderWidth).background(Hairline))
             }
         }
     }
@@ -545,7 +549,7 @@ private fun DayRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 9.dp)
+            .padding(vertical = KraftSpacing.Spacing8)
             .clearAndSetSemantics {
                 contentDescription = buildString {
                     append(dayLabel(day.dateMillis, nowMillis))
@@ -562,32 +566,32 @@ private fun DayRow(
     ) {
         Text(
             dayLabel(day.dateMillis, nowMillis),
-            style = label.copy(fontSize = 15.sp),
+            style = label.copy(fontSize = KraftTypeScale.Subheadline),
             color = onPage,
-            modifier = Modifier.width(76.dp),
+            modifier = Modifier.width(BaroMetrics.DayLabelMaxWidth),
         )
-        Spacer(Modifier.width(2.dp))
-        WeatherIcon(glyph = glyphFor(day.weatherCode), tint = onPage, size = 22.dp)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(KraftSpacing.Spacing2))
+        WeatherIcon(glyph = glyphFor(day.weatherCode), tint = onPage, size = KraftSpacing.Spacing20)
+        Spacer(Modifier.width(KraftSpacing.Spacing8))
         if (prob != null && prob > 0) {
             Text(
                 "$prob%",
-                style = label.copy(fontSize = 11.sp),
+                style = label.copy(fontSize = KraftTypeScale.Caption2),
                 color = if (prob >= 40) WaterBlue else TextMuted,
-                modifier = Modifier.width(34.dp),
+                modifier = Modifier.width(KraftSpacing.Spacing32),
             )
         } else {
-            Spacer(Modifier.width(34.dp))
+            Spacer(Modifier.width(KraftSpacing.Spacing32))
         }
         Text(
             day.temperatureMinC?.let { "${it.roundToInt()}°" } ?: "–",
-            style = label.copy(fontSize = 15.sp),
+            style = label.copy(fontSize = KraftTypeScale.Subheadline),
             color = TextMuted,
-            modifier = Modifier.width(34.dp),
+            modifier = Modifier.width(KraftSpacing.Spacing32),
             textAlign = TextAlign.End,
         )
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Surface3)) {
+        Spacer(Modifier.width(KraftSpacing.Spacing8))
+        Box(Modifier.weight(1f).height(KraftSpacing.Spacing6).clip(RoundedCornerShape(KraftRadius.DragHandle)).background(Surface3)) {
             if (day.hasRange) {
                 val startFrac = ((day.temperatureMinC!! - weekMin) / span).coerceIn(0f, 1f)
                 val endFrac = ((day.temperatureMaxC!! - weekMin) / span).coerceIn(0f, 1f)
@@ -596,17 +600,17 @@ private fun DayRow(
                         .fillMaxWidth(endFrac - startFrac)
                         .fillMaxSize()
                         .padding()
-                        .clip(RoundedCornerShape(3.dp))
+                        .clip(RoundedCornerShape(KraftRadius.DragHandle))
                         .background(rangeGradient(startFrac, endFrac)),
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(KraftSpacing.Spacing8))
         Text(
             day.temperatureMaxC?.let { "${it.roundToInt()}°" } ?: "–",
-            style = label.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium),
+            style = label.copy(fontSize = KraftTypeScale.Subheadline, fontWeight = FontWeight.Medium),
             color = onPage,
-            modifier = Modifier.width(34.dp),
+            modifier = Modifier.width(KraftSpacing.Spacing32),
         )
     }
 }
@@ -637,42 +641,42 @@ private fun InstrumentPanel(
             Column {
                 Text(
                     "BAROMETER",
-                    style = label.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp),
+                    style = label.copy(fontSize = KraftTypeScale.Badge, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp), // @kraft-lint-ignore type.no-raw-sp — display micro-label tracking, off-scale by design
                     color = TextMuted,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(KraftSpacing.Spacing4))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         hpa?.let { fmt1(it) } ?: "––",
                         style = label.copy(
-                            fontSize = 30.sp,
+                            fontSize = KraftTypeScale.Title1,
                             fontWeight = FontWeight.Light,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         ),
                         color = if (hpa != null) onPage else TextMuted,
                     )
-                    Spacer(Modifier.width(7.dp))
+                    Spacer(Modifier.width(KraftSpacing.Spacing8))
                     Text(
                         "hPa",
-                        style = label.copy(fontSize = 12.sp),
+                        style = label.copy(fontSize = KraftTypeScale.Caption1),
                         color = TextMuted,
-                        modifier = Modifier.padding(bottom = 5.dp),
+                        modifier = Modifier.padding(bottom = KraftSpacing.Spacing6),
                     )
                 }
             }
             if (trend != null && tendency != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(trend.arrow, style = label.copy(fontSize = 22.sp), color = trendColour(trend))
-                    Spacer(Modifier.width(5.dp))
+                    Text(trend.arrow, style = label.copy(fontSize = KraftTypeScale.Title2), color = trendColour(trend))
+                    Spacer(Modifier.width(KraftSpacing.Spacing6))
                     Column {
                         Text(
                             trend.label,
-                            style = label.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                            style = label.copy(fontWeight = FontWeight.Medium),
                             color = trendColour(trend),
                         )
                         Text(
                             "${fmt1(kotlin.math.abs(tendency))} hPa/h",
-                            style = label.copy(fontSize = 11.sp),
+                            style = label.copy(fontSize = KraftTypeScale.Caption2),
                             color = TextMuted,
                         )
                     }
@@ -685,13 +689,13 @@ private fun InstrumentPanel(
         // record of the past, and the reader should not have to work out
         // which is which.
         if (state.capabilities.canShowNowcast && state.nowcast.isNotEmpty() && hpa != null) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing12))
             Text(
                 "NOWCAST",
-                style = label.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp),
+                style = label.copy(fontSize = KraftTypeScale.Badge, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp), // @kraft-lint-ignore type.no-raw-sp — display micro-label tracking, off-scale by design
                 color = TextMuted,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing6))
             NowcastBand(
                 points = state.nowcast,
                 currentHpa = hpa,
@@ -699,7 +703,7 @@ private fun InstrumentPanel(
                 tint = Accent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(88.dp)
+                    .height(BaroMetrics.NowcastMinHeight)
                     .clearAndSetSemantics {
                         contentDescription = nowcastCaption(
                             state.nowcast,
@@ -707,22 +711,22 @@ private fun InstrumentPanel(
                         )
                     },
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing6))
             Text(
                 nowcastCaption(state.nowcast, com.krafttools.barokraft.core.HORIZON_HOURS),
-                style = label.copy(fontSize = 10.sp, lineHeight = 14.sp),
+                style = label.copy(fontSize = KraftTypeScale.Badge, lineHeight = 14.sp), // @kraft-lint-ignore type.no-raw-sp — dense note leading, tighter than label 20
                 color = TextMuted.copy(alpha = 0.85f),
             )
         }
 
         if (state.samples.size >= 4) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing8))
             PressureTrace(
                 values = state.samples.map { it.hpa },
                 scale = baroScale(state.samples.map { it.hpa }),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .height(KraftSpacing.Spacing64)
                     .clearAndSetSemantics {
                         contentDescription = traceDescription(
                             values = state.samples.map { it.hpa },
@@ -731,7 +735,7 @@ private fun InstrumentPanel(
                     },
             )
             val span = state.samples.last().atMillis - state.samples.first().atMillis
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing6))
             Text(
                 if (span < 3_600_000L) {
                     "Last ${(span / 60_000L).coerceAtLeast(1)} minutes · " +
@@ -739,7 +743,7 @@ private fun InstrumentPanel(
                 } else {
                     "Last ${span / 3_600_000L} hours · ${state.samples.size} readings"
                 },
-                style = label.copy(fontSize = 10.sp),
+                style = label.copy(fontSize = KraftTypeScale.Badge),
                 color = TextMuted.copy(alpha = 0.75f),
             )
         }
@@ -750,17 +754,17 @@ private fun InstrumentPanel(
                 "${fmt1(state.altitudeMetres!!)} m",
                 caveat = if (state.staleness == ReferenceStaleness.AGING) "reference ageing" else null,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing6))
             Text(
                 "Adjust reference",
-                style = label.copy(fontSize = 12.sp, color = Accent),
+                style = label.copy(fontSize = KraftTypeScale.Caption1, color = Accent),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(KraftRadius.Small))
                     .clickableNoRipple(onOpenReference)
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = KraftSpacing.Spacing4)
                     .semantics { contentDescription = "Adjust the sea-level reference" },
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing4))
         } else if (state.capabilities.canShowPressure) {
             // Tappable, because this used to be an instruction the app
             // offered no way to follow: "set a sea-level reference to get
@@ -768,7 +772,7 @@ private fun InstrumentPanel(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(KraftRadius.Small))
                     .clickableNoRipple(onOpenReference)
                     .semantics {
                         contentDescription = when (state.staleness) {
@@ -778,7 +782,7 @@ private fun InstrumentPanel(
                                 "No altitude, because no sea-level reference is set. Tap to set one."
                         }
                     }
-                    .padding(vertical = 6.dp),
+                    .padding(vertical = KraftSpacing.Spacing6),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -787,15 +791,15 @@ private fun InstrumentPanel(
                             "Reference too old — tap to set it again"
                         else -> "Set a sea-level reference for altitude"
                     },
-                    style = label.copy(fontSize = 12.sp, color = Accent),
+                    style = label.copy(fontSize = KraftTypeScale.Caption1, color = Accent),
                 )
             }
         }
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(KraftSpacing.Spacing6))
         Text(
             Method.PRESSURE_SOURCE,
-            style = label.copy(fontSize = 10.sp, lineHeight = 14.sp),
+            style = label.copy(fontSize = KraftTypeScale.Badge, lineHeight = 14.sp), // @kraft-lint-ignore type.no-raw-sp — dense note leading, tighter than label 20
             color = TextMuted.copy(alpha = 0.8f),
         )
     }
@@ -815,14 +819,14 @@ private fun NoBarometerNote() {
             WeatherIcon(
                 glyph = com.krafttools.barokraft.core.Glyph.CLOUD,
                 tint = TextMuted,
-                size = 26.dp,
+                size = KraftSpacing.Spacing24,
                 description = null,
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(KraftSpacing.Spacing8))
             Column {
                 Text(
                     "No pressure sensor on this device",
-                    style = label.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                    style = label.copy(fontWeight = FontWeight.Medium),
                 )
                 Text(
                     // "Above", not "below": this card sits *under* the
@@ -830,7 +834,7 @@ private fun NoBarometerNote() {
                     // kind of small wrongness that costs trust in the
                     // large ones.
                     "The forecast above is everything this app can tell you here.",
-                    style = label.copy(fontSize = 12.sp),
+                    style = label.copy(fontSize = KraftTypeScale.Caption1),
                     color = TextMuted,
                 )
             }
@@ -852,24 +856,24 @@ private fun VerdictStrip(verdict: Verdict, onPage: Color) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
-                    .width(3.dp)
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .width(KraftSpacing.Spacing4)
+                    .height(KraftSpacing.Spacing32)
+                    .clip(RoundedCornerShape(KraftRadius.DragHandle))
                     .background(accent),
             )
-            Spacer(Modifier.width(11.dp))
+            Spacer(Modifier.width(KraftSpacing.Spacing12))
             Column {
                 Text(
                     verdict.headline,
-                    style = label.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+                    style = label.copy(fontSize = KraftTypeScale.Callout, fontWeight = FontWeight.SemiBold),
                     color = onPage,
                     modifier = Modifier.semantics { heading() },
                 )
                 verdict.detail?.let {
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(KraftSpacing.Spacing2))
                     Text(
                         it,
-                        style = label.copy(fontSize = 12.sp, lineHeight = 16.sp),
+                        style = label.copy(fontSize = KraftTypeScale.Caption1, lineHeight = 16.sp), // @kraft-lint-ignore type.no-raw-sp — dense note leading, tighter than label 20
                         color = TextSecondary,
                     )
                 }
@@ -883,13 +887,13 @@ private fun GlassCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(KraftRadius.Hero))
             // Translucent rather than opaque, so the sky reads through
             // faintly. This is the whole reason the app looks like a weather
             // app and not a list of grey rectangles.
             .background(Surface1.copy(alpha = 0.72f))
-            .border(1.dp, Hairline.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
-            .padding(14.dp),
+            .border(KraftSpacing.BorderWidth, Hairline.copy(alpha = 0.6f), RoundedCornerShape(KraftRadius.Hero))
+            .padding(KraftSpacing.Spacing16),
         content = content,
     )
 }
@@ -915,7 +919,7 @@ private fun FailureNotice(failure: Failure?, state: MeasureState) {
         is Failure.NotNeeded -> ""
     }
     GlassCard {
-        Text(text, style = label.copy(fontSize = 13.sp), color = Warning)
+        Text(text, style = label.copy(fontSize = KraftTypeScale.Footnote), color = Warning)
     }
 }
 
@@ -928,7 +932,7 @@ private fun Controls(
 ) {
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing8),
     ) {
         if (state.capabilities.canShowPressure) {
             Pill(
@@ -958,13 +962,13 @@ private fun Pill(
 ) {
     Text(
         text,
-        style = label.copy(fontSize = 13.sp, color = if (accent) Accent else TextSecondary),
+        style = label.copy(fontSize = KraftTypeScale.Footnote, color = if (accent) Accent else TextSecondary),
         textAlign = TextAlign.Center,
         modifier = modifier
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(KraftRadius.Standard))
             .background(Surface1.copy(alpha = 0.72f))
-            .border(1.dp, Hairline.copy(alpha = 0.6f), RoundedCornerShape(11.dp))
-            .padding(vertical = 12.dp)
+            .border(KraftSpacing.BorderWidth, Hairline.copy(alpha = 0.6f), RoundedCornerShape(KraftRadius.Standard))
+            .padding(vertical = KraftSpacing.Spacing12)
             .clickableNoRipple(onClick)
             .semantics { contentDescription = description },
     )

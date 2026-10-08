@@ -22,6 +22,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.krafttools.barokraft.core.Method
+import com.kraft.ui.tokens.KraftTypeScale
+import com.kraft.ui.tokens.KraftSpacing
+import com.kraft.ui.tokens.KraftRadius
 
 /**
  * The method disclosure.
@@ -50,12 +53,12 @@ fun MethodSheet(onDismiss: () -> Unit) {
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .safeDrawingPadding()
-                .padding(horizontal = Pad, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = Pad, vertical = KraftSpacing.Spacing16),
+            verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing12),
         ) {
             Text(
                 "How this app measures",
-                style = label.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
+                style = label.copy(fontSize = KraftTypeScale.Title3, fontWeight = FontWeight.SemiBold),
             )
             MethodParagraph("Pressure", Method.PRESSURE_SOURCE)
             MethodParagraph("Altitude", Method.ALTITUDE_DEPENDS_ON)
@@ -64,10 +67,10 @@ fun MethodSheet(onDismiss: () -> Unit) {
             MethodParagraph("The forecast", Method.FORECAST_DEFINITION)
             MethodParagraph("Both sources", Method.TWO_SOURCES)
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(KraftSpacing.Spacing6))
             Text(
                 "What it will not claim",
-                style = label.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                style = label.copy(fontSize = KraftTypeScale.Subheadline, fontWeight = FontWeight.SemiBold),
                 color = Warning,
             )
             MethodParagraph("Temperature", Method.WillNot.TEMPERATURE)
@@ -79,15 +82,15 @@ fun MethodSheet(onDismiss: () -> Unit) {
 
         Text(
             "Close",
-            style = label.copy(fontSize = 15.sp),
+            style = label.copy(fontSize = KraftTypeScale.Subheadline),
             color = Accent,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Pad, vertical = 12.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .padding(horizontal = Pad, vertical = KraftSpacing.Spacing12)
+                .clip(RoundedCornerShape(KraftRadius.Standard))
                 .background(Surface2)
-                .padding(vertical = 13.dp)
+                .padding(vertical = KraftSpacing.Spacing12)
                 .clickableNoRipple(onDismiss),
         )
     }
@@ -95,8 +98,8 @@ fun MethodSheet(onDismiss: () -> Unit) {
 
 @Composable
 private fun MethodParagraph(heading: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(heading, style = label.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium))
-        Text(body, style = label.copy(fontSize = 12.sp, lineHeight = 17.sp), color = TextSecondary)
+    Column(verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing2)) {
+        Text(heading, style = label.copy(fontSize = KraftTypeScale.Footnote, fontWeight = FontWeight.Medium))
+        Text(body, style = label.copy(fontSize = KraftTypeScale.Caption1, lineHeight = 17.sp), color = TextSecondary) // @kraft-lint-ignore type.no-raw-sp — dense note leading, tighter than label 20
     }
 }

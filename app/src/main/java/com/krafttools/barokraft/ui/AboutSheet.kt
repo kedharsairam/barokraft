@@ -40,6 +40,9 @@ import com.krafttools.barokraft.core.MIN_CERTAINTY_HPA
 import com.krafttools.barokraft.core.REFERENCE_DRIFT_STALE_HPA
 import com.krafttools.barokraft.core.REFERENCE_USABLE_HOURS
 import com.krafttools.barokraft.core.VELOCITY_ERROR_HPA_PER_HOUR
+import com.kraft.ui.tokens.KraftTypeScale
+import com.kraft.ui.tokens.KraftSpacing
+import com.kraft.ui.tokens.KraftRadius
 
 /**
  * The About sheet.
@@ -82,19 +85,19 @@ fun AboutSheet(
             Text(
                 About.NAME,
                 style = label.copy(
-                    fontSize = 24.sp,
+                    fontSize = KraftTypeScale.Title2,
                     fontWeight = FontWeight.SemiBold,
                 ),
                 modifier = Modifier.semantics { heading() },
             )
             Text(
                 About.TAGLINE,
-                style = label.copy(fontSize = 14.sp),
+                style = label,
                 color = TextSecondary,
             )
             Text(
                 "Version $versionName · MIT licence",
-                style = label.copy(fontSize = 11.sp),
+                style = label.copy(fontSize = KraftTypeScale.Caption2),
                 color = TextMuted,
                 modifier = Modifier.semantics {
                     contentDescription = "Version $versionName, MIT licence"
@@ -153,15 +156,15 @@ fun AboutSheet(
 
         Text(
             "Close",
-            style = label.copy(fontSize = 15.sp),
+            style = label.copy(fontSize = KraftTypeScale.Subheadline),
             color = Accent,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Pad, vertical = 12.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .padding(horizontal = Pad, vertical = KraftSpacing.Spacing12)
+                .clip(RoundedCornerShape(KraftRadius.Standard))
                 .background(Surface2)
-                .padding(vertical = 14.dp)
+                .padding(vertical = KraftSpacing.Spacing16)
                 .semantics { contentDescription = "Close the about screen" }
                 .clickableNoRipple(onDismiss),
         )
@@ -181,29 +184,29 @@ private fun SupportBlock() {
     Text(
         About.SUPPORT_HEADING,
         style = label.copy(
-            fontSize = 15.sp,
+            fontSize = KraftTypeScale.Subheadline,
             fontWeight = FontWeight.SemiBold,
         ),
         color = TextPrimary,
         modifier = Modifier.semantics { heading() },
     )
-    Spacer(Modifier.height(4.dp))
+    Spacer(Modifier.height(KraftSpacing.Spacing4))
     Text(
         About.SUPPORT_NOTE,
-        style = label.copy(fontSize = 12.sp, lineHeight = 17.sp),
+        style = label.copy(fontSize = KraftTypeScale.Caption1, lineHeight = 17.sp), // @kraft-lint-ignore type.no-raw-sp — dense note leading, tighter than label 20
         color = TextSecondary,
     )
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(KraftSpacing.Spacing8))
     Text(
         "Buy me a coffee",
-        style = label.copy(fontSize = 14.sp),
+        style = label,
         color = Accent,
         textAlign = TextAlign.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(KraftRadius.Standard))
             .background(Surface2)
-            .padding(vertical = 13.dp)
+            .padding(vertical = KraftSpacing.Spacing12)
             // Clickable first, then the description. The order matters and
             // the wrong order is silent: `semantics` clears the
             // semantics of every modifier applied *after* it, so putting the
@@ -224,11 +227,11 @@ private fun SupportBlock() {
 
 @Composable
 private fun Section(heading: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(KraftSpacing.Spacing4)) {
         Text(
             heading,
             style = label.copy(
-                fontSize = 15.sp,
+                fontSize = KraftTypeScale.Subheadline,
                 fontWeight = FontWeight.SemiBold,
             ),
             color = TextPrimary,
@@ -238,7 +241,7 @@ private fun Section(heading: String, body: String) {
         )
         Text(
             body,
-            style = label.copy(fontSize = 13.sp, lineHeight = 19.sp),
+            style = label.copy(fontSize = KraftTypeScale.Footnote, lineHeight = 19.sp), // @kraft-lint-ignore type.no-raw-sp — body leading tighter than label 20
             color = TextSecondary,
         )
     }
