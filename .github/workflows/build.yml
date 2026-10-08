@@ -8,6 +8,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+defaults:
+  run:
+    working-directory: barokraft
+
 permissions:
   contents: read
 
@@ -23,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: barokraft
       # kraft-foundation is public, so no credentials are needed. It sits beside the
       # repository root because the app consumes it as a composite build
       # (`includeBuild("../kraft-foundation")` in settings.gradle.kts).
@@ -45,7 +51,7 @@ jobs:
       # `quality.ci-runs-the-gate` fails if this step is removed. No working-directory:
         # the app is checked out at the workspace root and the foundation beside it.
       - name: Quality gate
-        run: node kraft-foundation/tools/kraft-lint/kraft-lint.js . --format github
+        run: node ../kraft-foundation/tools/kraft-lint/kraft-lint.js . --format github
 
       - name: Unit tests
         # No daemon: a CI machine starts cold and lives for one job, so the
@@ -57,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-reports
-          path: app/build/reports/tests/testDebugUnitTest/
+          path: barokraft/app/build/reports/tests/testDebugUnitTest/
           retention-days: 14
 
   # The APK is uploaded on a tag so a release can attach the exact binary CI
@@ -96,7 +102,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apks
-          path: app/build/outputs/apk/*/*.apk
+          path: barokraft/app/build/outputs/apk/*/*.apk
           retention-days: 30
 
   instrumented:
@@ -165,7 +171,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: instrumented-test-reports
-          path: app/build/reports/androidTests/connected/
+          path: barokraft/app/build/reports/androidTests/connected/
           retention-days: 14
 
       # Six tests hit the live Open-Meteo API on purpose, so this job can fail
