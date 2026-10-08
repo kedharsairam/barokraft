@@ -180,7 +180,7 @@ jobs:
           #
           # `timeout-minutes` is the part worth keeping: a hung emulator
           # should burn ten minutes, not the job's whole allowance.
-          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
+          script: ${{ github.workspace }}/barokraft/gradlew --no-daemon :app:connectedDebugAndroidTest
 
       - name: Test report
         if: always()
