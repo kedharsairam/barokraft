@@ -74,6 +74,8 @@ jobs:
     needs: unit
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: barokraft
       - name: Checkout kraft-foundation (composite-build sibling)
         uses: actions/checkout@v4
         with:
@@ -123,6 +125,8 @@ jobs:
     # and nothing in this app uses them.
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: barokraft
       - name: Checkout kraft-foundation (composite-build sibling)
         uses: actions/checkout@v4
         with:
